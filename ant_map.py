@@ -25,7 +25,7 @@ class Map:
         return self.pheromone_m
 
     def add_pheromone(self, new_pheromone : numpy.typing.NDArray) -> numpy.typing.NDArray:
-        if self.pheromone_m.size != new_pheromone.size():
+        if self.pheromone_m.size != new_pheromone.size:
             raise Exception("Size of new pheromone matrix and ph. map do not match!")
 
         # Add new pheromone

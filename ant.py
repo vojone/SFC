@@ -1,8 +1,8 @@
+from __future__ import annotations
+
 import numpy
 import numpy.typing
-
-from __future__ import annotations
-from map import Map
+from ant_map import Map
 
 
 class Ant:
