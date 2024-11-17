@@ -1,6 +1,7 @@
 import numpy
 import numpy.typing
 
+from __future__ import annotations
 from map import Map
 
 
@@ -8,6 +9,7 @@ class Ant:
     def __init__(
         self,
         map: Map,
+        next_place_choice_fn,
         pheromone_weight: int = 1,
         visibility_weight: int = 1,
         pheronome_deposit: float = 1.0,
@@ -17,6 +19,7 @@ class Ant:
         self.pheromone_w = pheromone_weight
         self.visibility_w = visibility_weight
         self.pheronome_deposit = pheronome_deposit
+        self.next_place_choice_fn = next_place_choice_fn
 
     @property
     def position(self) -> int | None:
@@ -26,21 +29,54 @@ class Ant:
     def is_finished(self):
         return len(self.tabu) == len(self.map.places)
 
-    def get_transition_probabilities(self) -> numpy.typing.NDArray:
-        current_place_idx = self.position
-        place_probs = numpy.zeros(len(self.map.places))
+    @classmethod
+    def ant_system_choice(cls, ant : Ant) -> int:
+        probabilities = cls.ant_system_transition_probabilities(ant)
+        place_indeces = numpy.arange(len(ant.map.places))
+        next_place_index = numpy.random.choice(place_indeces, p=probabilities)
+        return next_place_index
+
+    @classmethod
+    def ant_system_transition_probabilities(cls, ant : Ant) -> numpy.typing.NDArray:
+        current_place_idx = ant.position
+        place_probs = numpy.zeros(len(ant.map.places))
         for i, _ in enumerate(place_probs):
-            if i in self.tabu:
+            if i in ant.tabu:
                 continue
 
-            dist = self.map.distance_m[current_place_idx][i]
-            p = self.map.pheromone_m[current_place_idx][i]
+            dist = ant.map.distance_m[current_place_idx][i]
+            p = ant.map.pheromone_m[current_place_idx][i]
             v = 1 / dist
-            place_probs[i] = (p**self.pheromone_w) * (v**self.visibility_w)
+            place_probs[i] = (p**ant.pheromone_w) * (v**ant.visibility_w)
 
         # Normalize probabilities to make valid (categorial) probability distribution
         place_probs = place_probs / numpy.sum(place_probs)
         return place_probs
+
+    @classmethod
+    def ant_colony_choice(cls, ant : Ant, threshold : float) -> int:
+        r = numpy.random.random()
+        if r > threshold:
+            # Exploration
+            return cls.ant_system_choice(ant)
+
+        # Exploitation (r <= threshold)
+        next_place_index = None
+        next_place_quality = None
+        current_place_idx = ant.position
+        for i, _ in enumerate(ant.map.places):
+            if i in ant.tabu:
+                continue
+
+            dist = ant.map.distance_m[current_place_idx][i]
+            p = ant.map.pheromone_m[current_place_idx][i]
+            v = 1 / dist
+            quality = p * (v**ant.visibility_w)
+            if next_place_quality is None or quality > next_place_quality:
+                next_place_quality = quality
+                next_place_index = i
+
+        return next_place_index
 
     def get_path(self):
         return self.tabu
@@ -95,9 +131,7 @@ class Ant:
         if self.is_finished:
             return True
 
-        probabilities = self.get_transition_probabilities()
-        place_indeces = numpy.arange(len(self.map.places))
-        next_place_index = numpy.random.choice(place_indeces, p=probabilities)
+        next_place_index = self.next_place_choice_fn(self)
         self.move_to(next_place_index)
 
         return False
