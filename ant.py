@@ -46,7 +46,7 @@ class Ant:
 
             dist = ant.map.distance_m[current_place_idx][i]
             p = ant.map.pheromone_m[current_place_idx][i]
-            v = 1 / dist
+            v = 1 / (dist + 1e-10) #TODO
             place_probs[i] = (p**ant.pheromone_w) * (v**ant.visibility_w)
 
         # Normalize probabilities to make valid (categorial) probability distribution
