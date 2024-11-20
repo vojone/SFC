@@ -70,7 +70,7 @@ class Ant:
 
             dist = ant.map.distance_m[current_place_idx][i]
             p = ant.map.pheromone_m[current_place_idx][i]
-            v = 1 / dist
+            v = 1 / (dist + 1e-30) # Add very small number to distance to avoid divison by zero
             quality = p * (v**ant.visibility_w)
             if next_place_quality is None or quality > next_place_quality:
                 next_place_quality = quality
