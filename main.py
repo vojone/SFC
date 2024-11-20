@@ -8,10 +8,26 @@ import threading
 import tkinter.ttk
 import matplotlib.pyplot as plt
 
-from ant_system import AntSystem
+from ant_system import AntAlgorithm, AntSystem, AntColony
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk, FigureCanvasTkAgg
 
 class GUI:
+    ALGORIHTM_PARAMS = {
+        "Ant System": {
+            "ant_amount" :  (20,    "Number Of Ants",       tkinter.IntVar),
+            "pheronome_w":  (1.0,   "Pheromone weight",     tkinter.DoubleVar),
+            "visibility_w": (1.0,   "Visibility weight",    tkinter.DoubleVar),
+            "vaporization": (0.2,   "Vaporization",         tkinter.DoubleVar),
+        },
+        "Ant Colony": {
+            "ant_amount" :  (20,    "Number Of Ants",       tkinter.IntVar),
+            "pheronome_w":  (1.0,   "Pheromone weight",     tkinter.DoubleVar),
+            "visibility_w": (1.0,   "Visibility weight",    tkinter.DoubleVar),
+            "vaporization": (0.2,   "Vaporization",         tkinter.DoubleVar),
+            "exploitation_coef": (0.3, "Exploitation threshold ", tkinter.DoubleVar),
+        },
+    }
+
     def __init__(self):
         self.root = tkinter.Tk()
         self.root.wm_title("ACO")
@@ -33,6 +49,12 @@ class GUI:
         self.var_iterations = tkinter.IntVar(master=self.root, value=0)
         self.label_iterations = tkinter.Label(master=self.root, textvariable=self.var_iterations)
         self.label_iterations.pack(side=tkinter.TOP)
+
+        self.var_seed = tkinter.IntVar(master=self.root, value=0)
+        label_seed = tkinter.Label(master=self.root, text="Seed")
+        label_seed.pack(side=tkinter.TOP)
+        self.entry_seed = tkinter.Entry(master=self.root, textvariable=self.var_seed)
+        self.entry_seed.pack(side=tkinter.TOP)
 
         self.canvas = FigureCanvasTkAgg(fig, master=self.root)
         self.canvas.draw()
@@ -88,8 +110,8 @@ class GUI:
         )
 
     def update_params(self, new_params : dict):
-        for c in self.param_frame.children:
-            self.param_frame.children[c].destroy()
+        for c in self.param_frame.winfo_children():
+            c.destroy()
 
         self.param_dict.clear()
         for param_name in new_params:
@@ -111,9 +133,15 @@ class GUI:
 
 
 class App:
+    ALGORITHM_CLASSES = {
+        "Ant System": AntSystem, # Default
+        "Ant Colony": AntColony,
+    }
+
     def __init__(self, data_filepath : str):
         self.data_filepath = data_filepath
         self.algorithm = None
+        self.algorithm_class = None
         self.algorithm_is_running = False
         self.best_solution = None
 
@@ -126,23 +154,24 @@ class App:
         self.gui.button_step.configure(command=self._step)
         self.gui.button_reset.configure(command=self._reset)
 
-        self.gui.set_algorithm_options(["Ant System", "Ant Colony"])
+        self.gui.set_algorithm_options(list(self.ALGORITHM_CLASSES.keys()))
         self.gui.var_algorithm.trace_add('write', self._change_algorithm)
 
-        self.params = {
-            "ant_amount" :  (20,    "Number Of Ants",       tkinter.IntVar),
-            "pheronome_w":  (1.0,   "Pheromone weight",     tkinter.DoubleVar),
-            "visibility_w": (1.0,   "Visibility weight",    tkinter.DoubleVar),
-            "vaporization": (0.2,   "Vaporization",         tkinter.DoubleVar),
-        }
-
-        self.gui.update_params(self.params)
+        default_algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
+        self.gui.update_params(self.gui.ALGORIHTM_PARAMS[default_algorithm_name])
+        self.algorithm_class = self.ALGORITHM_CLASSES[default_algorithm_name]
 
     def _quit(self):
         self.gui.root.quit()
         self.gui.root.destroy()
 
     def _change_algorithm(self, *args, **kwargs):
+        algorithm_name = self.gui.var_algorithm.get()
+        self.gui.update_params(self.gui.ALGORIHTM_PARAMS[algorithm_name])
+        self.algorithm_class = self.ALGORITHM_CLASSES[algorithm_name]
+
+        self._reset()
+
         print(f"Algorithm changed to {self.gui.var_algorithm.get()}")
 
     def _step(self):
@@ -155,7 +184,6 @@ class App:
         self.gui.canvas.draw()
         if not continues:
             self.button_step["state"] = "disabled"
-
 
     def _run(self):
         self.algorithm_run_until_end()
@@ -175,13 +203,13 @@ class App:
         self.gui.draw_map(self.data)
         self.gui.canvas.draw()
 
-        self.algorithm_init(AntSystem)
+        self.algorithm_init()
         self.gui.var_iterations.set(self.algorithm.current_iteration)
 
     def _open_file(self):
         self.data_filepath = self.gui.open_data_file()
 
-        self.gui.var_opened_file.set(text=os.path.basename(self.data_filepath))
+        self.gui.var_opened_file.set(os.path.basename(self.data_filepath))
         self.load_data()
         self._reset()
 
@@ -195,7 +223,7 @@ class App:
             self.load_data()
             self.gui.draw_map(self.data)
 
-        self.algorithm_init(AntSystem)
+        self.algorithm_init()
         self.gui.var_iterations.set(self.algorithm.current_iteration)
 
     def end(self):
@@ -205,14 +233,13 @@ class App:
         best_path = self.best_solution[0]
         self.gui.draw_path(best_path, self.algorithm.map.places)
 
-    def algorithm_init(self, algorithm_class):
+    def algorithm_init(self):
         current_params = {}
         for p in self.gui.param_dict:
             current_params[p] = self.gui.param_dict[p].get()
 
-        print(current_params)
-        self.algorithm = algorithm_class(
-            self.data,
+        self.algorithm = self.algorithm_class(
+            AntAlgorithm.tuples_to_places(self.data),
             iterations=100,
             **current_params,
             # ant_amount=20,

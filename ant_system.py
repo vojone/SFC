@@ -100,10 +100,7 @@ class AntSystem(AntSystemCommon):
         visibility_w: float,
         vaporization: float,
     ):
-        self.map = Map(
-            [Place(p[1], p[0]) for p in places],
-            pheronomone_vaporization=vaporization,
-        )
+        self.map = Map(places, pheronomone_vaporization=vaporization)
         self.ants = [
             Ant(
                 self.map,
