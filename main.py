@@ -131,6 +131,63 @@ class GUI:
         self.var_algorithm.set(algorithm_options[0])
 
 
+class AlgorithmRunner:
+    def __init__(self, algorithm : AntAlgorithm, gui : GUI | None, done_callback):
+        self.algorithm = algorithm
+        self.gui = gui
+        self.thread = threading.Thread(target=self.runner)
+        self.sleep_event = threading.Event()
+        self.finish_task_event = threading.Event()
+        self.run_event = threading.Event()
+        self.terminated_event = threading.Event()
+        self.done_callback = done_callback
+
+    @property
+    def is_alive(self):
+        return self.thread.is_alive()
+
+    def start(self):
+        self.thread.start()
+
+    def stop(self):
+        self.run_event.clear()
+
+    def make_step(self):
+        self.sleep_event.set()
+
+    def run(self):
+        self.run_event.set()
+        self.sleep_event.set()
+
+    def wait_for_result(self):
+        self.finish_task_event.wait()
+        self.finish_task_event.clear()
+
+    def terminate(self):
+        self.terminated_event.set()
+        self.sleep_event.set()
+        self.thread.join()
+
+    def runner(self):
+        while not self.terminated_event.is_set():
+            self.sleep_event.wait()
+            self.sleep_event.clear()
+            if self.terminated_event.is_set():
+                break
+
+            if self.run_event.is_set():
+                while self.run_event.is_set() and self.algorithm.make_step():
+                    if self.gui is not None:
+                        self.gui.var_iterations.set(self.algorithm.current_iteration)
+                        self.gui.root.update_idletasks()
+            else:
+                self.algorithm.make_step()
+                self.gui.var_iterations.set(self.algorithm.current_iteration)
+
+            self.done_callback(not self.algorithm.is_finished)
+            self.finish_task_event.set()
+
+
 
 class App:
     ALGORITHM_CLASSES = {
@@ -138,78 +195,92 @@ class App:
         "Ant Colony": AntColony,
     }
 
-    def __init__(self, data_filepath : str):
+    def __init__(self, data_filepath : str | None, has_gui : bool = True):
         self.data_filepath = data_filepath
-        self.algorithm = None
+
+        self.data : list | None = None
+        self.algorithm : AntAlgorithm | None = None
+        self.algorithm_runner : AlgorithmRunner | None = None
         self.algorithm_class = None
-        self.algorithm_is_running = False
+
         self.best_solution = None
 
-        self.gui = GUI()
-        self.gui.set_quit_fn(self._quit)
-        self.gui.var_opened_file.set(os.path.basename(data_filepath))
-        self.gui.button_open_file.configure(command=self._open_file)
-        self.gui.button_run.configure(command=self._run)
-        self.gui.button_stop.configure(command=self._stop)
-        self.gui.button_step.configure(command=self._step)
-        self.gui.button_reset.configure(command=self._reset)
-
-        self.gui.set_algorithm_options(list(self.ALGORITHM_CLASSES.keys()))
-        self.gui.var_algorithm.trace_add('write', self._change_algorithm)
-
         default_algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
-        self.gui.update_params(self.gui.ALGORIHTM_PARAMS[default_algorithm_name])
         self.algorithm_class = self.ALGORITHM_CLASSES[default_algorithm_name]
 
+        if has_gui:
+            self.gui = GUI()
+            self.gui.set_quit_fn(self._quit)
+            self.gui.var_opened_file.set(os.path.basename(data_filepath) if data_filepath is not None else "No file opened")
+            self.gui.button_open_file.configure(command=self._open_file)
+            self.gui.button_run.configure(command=self._run)
+            self.gui.button_stop.configure(command=self._stop)
+            self.gui.button_step.configure(command=self._step)
+            self.gui.button_reset.configure(command=self._reset)
+
+            self.gui.set_algorithm_options(list(self.ALGORITHM_CLASSES.keys()))
+            self.gui.var_algorithm.trace_add('write', self._change_algorithm)
+
+            default_algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
+            self.gui.update_params(self.gui.ALGORIHTM_PARAMS[default_algorithm_name])
+
+    @property
+    def has_gui(self):
+        return self.gui is not None
+
     def _quit(self):
-        self.gui.root.quit()
-        self.gui.root.destroy()
+        if self.algorithm_runner is not None:
+            self.algorithm_runner.terminate()
+
+        if self.has_gui:
+            self.gui.root.quit()
+            self.gui.root.destroy()
 
     def _change_algorithm(self, *args, **kwargs):
         algorithm_name = self.gui.var_algorithm.get()
-        self.gui.update_params(self.gui.ALGORIHTM_PARAMS[algorithm_name])
-        self.algorithm_class = self.ALGORITHM_CLASSES[algorithm_name]
-
-        self._reset()
-
+        self.set_algorithm(algorithm_name)
+        self.reset()
         print(f"Algorithm changed to {self.gui.var_algorithm.get()}")
 
-    def _step(self):
-        continues = self.algorithm_step()
-        self.gui.var_iterations.set(self.algorithm.current_iteration)
+    def _algorithm_cb(self, continues : bool):
+        self.best_solution = (
+            self.algorithm.best_path,
+            self.algorithm.best_path_len
+        )
 
         self.gui.graph_axis.cla()
         self.draw_best_path()
         self.gui.draw_map(self.data)
         self.gui.canvas.draw()
         if not continues:
-            self.button_step["state"] = "disabled"
-
-    def _run(self):
-        self.algorithm_run_until_end()
-        self.gui.var_iterations.set(self.algorithm.current_iteration)
-        self.gui.graph_axis.cla()
-        self.draw_best_path()
-        self.gui.draw_map(self.data)
-        self.gui.canvas.draw()
-        self.gui.button_step["state"] = "disabled"
+            self.gui.button_step["state"] = "disabled"
+            self.gui.button_run["state"] = "disabled"
 
     def _stop(self):
-        self.algorithm_is_running = False
+        self.algorithm_runner.stop()
 
     def _reset(self):
-        self.gui.button_step["state"] = "normal"
-        self.gui.graph_axis.cla()
-        self.gui.draw_map(self.data)
-        self.gui.canvas.draw()
+        self.reset()
 
-        self.algorithm_init()
-        self.gui.var_iterations.set(self.algorithm.current_iteration)
+    def _step(self):
+        if self.algorithm_runner is None:
+            return
+
+        self.algorithm_runner.make_step()
+
+    def _run(self):
+        if self.algorithm_runner is None:
+            return
+
+        self.algorithm_runner.run()
+        if self.has_gui:
+            self.gui.button_run["state"] = "disabled"
 
     def _open_file(self):
         self.data_filepath = self.gui.open_data_file()
 
-        self.gui.var_opened_file.set(os.path.basename(self.data_filepath))
+        data_filename = os.path.basename(self.data_filepath)
+        self.gui.var_opened_file.set(data_filename)
         self.load_data()
         self._reset()
 
@@ -217,21 +288,32 @@ class App:
         fp = open(self.data_filepath, "r")
         self.data = json.load(fp)
 
+    def set_algorithm(self, algorithm_name : str):
+        self.algorithm_class = self.ALGORITHM_CLASSES[algorithm_name]
+        if self.has_gui:
+            self.gui.update_params(self.gui.ALGORIHTM_PARAMS[algorithm_name])
+
     def start(self):
-        self.gui.graph_axis.cla()
         if self.data_filepath is not None:
             self.load_data()
-            self.gui.draw_map(self.data)
+
+        self.reset()
+
+    def reset(self):
+        if self.has_gui:
+            self.gui.button_step["state"] = "normal"
+            self.gui.button_run["state"] = "normal"
+            self.gui.graph_axis.cla()
+            if self.data is not None:
+                self.gui.draw_map(self.data)
+            self.gui.canvas.draw()
+
+        if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
+            self.algorithm_runner.terminate()
 
         self.algorithm_init()
-        self.gui.var_iterations.set(self.algorithm.current_iteration)
-
-    def end(self):
-        pass
-
-    def draw_best_path(self):
-        best_path = self.best_solution[0]
-        self.gui.draw_path(best_path, self.algorithm.map.places)
+        if self.has_gui:
+            self.gui.var_iterations.set(self.algorithm.current_iteration)
 
     def algorithm_init(self):
         current_params = {}
@@ -242,33 +324,18 @@ class App:
             AntAlgorithm.tuples_to_places(self.data),
             iterations=100,
             **current_params,
-            # ant_amount=20,
-            # pheronome_w=1,
-            # visibility_w=1,
-            # vaporization=0.2
         )
-
         self.algorithm.start()
 
-    def algorithm_step(self) -> bool:
-        result = self.algorithm.make_step()
-        self.best_solution = (
-            self.algorithm.best_path,
-            self.algorithm.best_path_len
-        )
+        self.algorithm_runner = AlgorithmRunner(self.algorithm, self.gui, self._algorithm_cb)
+        self.algorithm_runner.start()
 
-        return result
+    def draw_best_path(self):
+        best_path = self.best_solution[0]
 
-    def algorithm_run_until_end(self):
-        self.algorithm_is_running = True
-        while self.algorithm_is_running and self.algorithm.make_step():
-            self.gui.var_iterations.set(self.algorithm.current_iteration)
-            self.gui.root.update_idletasks()
+        if self.has_gui:
+            self.gui.draw_path(best_path, self.algorithm.map.places)
 
-        self.best_solution = (
-            self.algorithm.best_path,
-            self.algorithm.best_path_len
-        )
 
 if __name__ == "__main__":
     app = App(sys.argv[1])
