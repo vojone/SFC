@@ -35,6 +35,9 @@ class GUI:
         self.button_run = tkinter.Button(master=self.root, text="Run")
         self.button_run.pack(side=tkinter.BOTTOM)
 
+        self.button_stop = tkinter.Button(master=self.root, text="Stop")
+        self.button_stop.pack(side=tkinter.BOTTOM)
+
         self.button_step = tkinter.Button(master=self.root, text="Step")
         self.button_step.pack(side=tkinter.BOTTOM)
 
@@ -43,6 +46,10 @@ class GUI:
 
         self.button_quit = tkinter.Button(master=self.root, text="Quit")
         self.button_quit.pack(side=tkinter.BOTTOM)
+
+        self.param_frame = tkinter.Frame(master=self.root)
+        self.param_frame.pack(side=tkinter.BOTTOM)
+        self.param_dict = {}
 
         self.toolbar = NavigationToolbar2Tk(self.canvas, self.root, pack_toolbar=False)
         self.toolbar.update()
@@ -74,10 +81,30 @@ class GUI:
             filetypes = (("JSON files", "*.json*"), ("All files","*.*"))
         )
 
+    def update_params(self, new_params : dict):
+        for c in self.param_frame.children:
+            self.param_frame.children[c].destroy()
+
+        self.param_dict.clear()
+        for param_name in new_params:
+            default, label_text, var_type = new_params[param_name]
+            var_param_entry = var_type(master=self.param_frame, value=default)
+
+            label_param_entry = tkinter.Label(master=self.param_frame, text=label_text)
+            label_param_entry.pack(side=tkinter.TOP)
+
+            param_entry = tkinter.Entry(name=param_name, master=self.param_frame, textvariable=var_param_entry)
+            param_entry.pack(side=tkinter.TOP)
+
+            self.param_dict[param_name] = var_param_entry
+
+
+
 class App:
     def __init__(self, data_filepath : str):
         self.data_filepath = data_filepath
         self.algorithm = None
+        self.algorithm_is_running = False
         self.best_solution = None
 
         self.gui = GUI()
@@ -85,8 +112,18 @@ class App:
         self.gui.var_opened_file.set(os.path.basename(data_filepath))
         self.gui.button_open_file.configure(command=self._open_file)
         self.gui.button_run.configure(command=self._run)
+        self.gui.button_stop.configure(command=self._stop)
         self.gui.button_step.configure(command=self._step)
         self.gui.button_reset.configure(command=self._reset)
+
+        self.params = {
+            "ant_amount" :  (20,    "Number Of Ants",       tkinter.IntVar),
+            "pheronome_w":  (1.0,   "Pheromone weight",     tkinter.DoubleVar),
+            "visibility_w": (1.0,   "Visibility weight",    tkinter.DoubleVar),
+            "vaporization": (0.2,   "Vaporization",         tkinter.DoubleVar),
+        }
+
+        self.gui.update_params(self.params)
 
     def _quit(self):
         self.gui.root.quit()
@@ -112,6 +149,9 @@ class App:
         self.gui.draw_map(self.data)
         self.gui.canvas.draw()
         self.gui.button_step["state"] = "disabled"
+
+    def _stop(self):
+        self.algorithm_is_running = False
 
     def _reset(self):
         self.gui.button_step["state"] = "normal"
@@ -150,13 +190,19 @@ class App:
         self.gui.draw_path(best_path, self.algorithm.map.places)
 
     def algorithm_init(self, algorithm_class):
+        current_params = {}
+        for p in self.gui.param_dict:
+            current_params[p] = self.gui.param_dict[p].get()
+
+        print(current_params)
         self.algorithm = algorithm_class(
             self.data,
-            ant_amount=20,
             iterations=100,
-            pheronome_w=1,
-            visibility_w=1,
-            vaporization=0.2
+            **current_params,
+            # ant_amount=20,
+            # pheronome_w=1,
+            # visibility_w=1,
+            # vaporization=0.2
         )
 
         self.algorithm.start()
@@ -171,7 +217,8 @@ class App:
         return result
 
     def algorithm_run_until_end(self):
-        while self.algorithm.make_step():
+        self.algorithm_is_running = True
+        while self.algorithm_is_running and self.algorithm.make_step():
             self.gui.var_iterations.set(self.algorithm.current_iteration)
             self.gui.root.update_idletasks()
 
