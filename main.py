@@ -4,6 +4,8 @@ import sys
 import os
 import json
 import tkinter.filedialog
+import threading
+import tkinter.ttk
 import matplotlib.pyplot as plt
 
 from ant_system import AntSystem
@@ -20,6 +22,10 @@ class GUI:
 
         self.button_open_file = tkinter.Button(master=self.root, text="Open file")
         self.button_open_file.pack(side=tkinter.TOP)
+
+        self.var_algorithm = tkinter.StringVar()
+        self.combobox_algorithm = tkinter.ttk.Combobox(master=self.root, state="readonly", textvariable=self.var_algorithm)
+        self.combobox_algorithm.pack(side=tkinter.TOP)
 
         fig = plt.figure(figsize=(5, 5), dpi=100)
         self.graph_axis = fig.add_subplot()
@@ -98,6 +104,10 @@ class GUI:
 
             self.param_dict[param_name] = var_param_entry
 
+    def set_algorithm_options(self, algorithm_options : list[str]):
+        self.combobox_algorithm.configure(values=algorithm_options)
+        self.var_algorithm.set(algorithm_options[0])
+
 
 
 class App:
@@ -116,6 +126,9 @@ class App:
         self.gui.button_step.configure(command=self._step)
         self.gui.button_reset.configure(command=self._reset)
 
+        self.gui.set_algorithm_options(["Ant System", "Ant Colony"])
+        self.gui.var_algorithm.trace_add('write', self._change_algorithm)
+
         self.params = {
             "ant_amount" :  (20,    "Number Of Ants",       tkinter.IntVar),
             "pheronome_w":  (1.0,   "Pheromone weight",     tkinter.DoubleVar),
@@ -128,6 +141,9 @@ class App:
     def _quit(self):
         self.gui.root.quit()
         self.gui.root.destroy()
+
+    def _change_algorithm(self, *args, **kwargs):
+        print(f"Algorithm changed to {self.gui.var_algorithm.get()}")
 
     def _step(self):
         continues = self.algorithm_step()
