@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy
 import numpy.typing
 
-from ant_system import AntAlgorithm, AntSystem, AntColony
+from ant_algorithm import AntAlgorithm, AntSystem, AntColony
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk, FigureCanvasTkAgg
 
 
