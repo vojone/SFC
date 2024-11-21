@@ -417,18 +417,16 @@ class App:
         self.reset()
 
     def reset(self):
-        self.best_solution = None
-        if self.has_gui:
-            self.gui.button_step["state"] = "normal"
-            self.gui.button_run["state"] = "normal"
-            self.gui.redraw_canvas(self.to_draw)
-
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
             self.algorithm_runner.terminate()
 
+        self.best_solution = None
         self.algorithm_init()
         if self.has_gui:
             self.gui.var_iterations.set(self.algorithm.current_iteration)
+            self.gui.button_step["state"] = "normal"
+            self.gui.button_run["state"] = "normal"
+            self.gui.redraw_canvas(self.to_draw)
 
     def algorithm_init(self):
         current_params = {}
