@@ -294,6 +294,7 @@ class App:
         self.algorithm: AntAlgorithm | None = None
         self.algorithm_runner: AlgorithmRunner | None = None
         self.algorithm_class = None
+        self.run_jobid = None
 
         self.best_solution = None
         self.to_draw = {}
@@ -312,11 +313,15 @@ class App:
             self.gui.button_open_file.configure(command=self._open_file)
             self.gui.button_run.configure(command=self._run)
             self.gui.button_stop.configure(command=self._stop)
-            self.gui.button_step.configure(command=self._step)
+
+            self.gui.button_step.bind('<ButtonPress-1>', self._step_press)
+            self.gui.button_step.bind('<ButtonRelease-1>', self._step_release)
             self.gui.button_reset.configure(command=self._reset)
 
             self.gui.set_algorithm_options(list(self.ALGORITHM_CLASSES.keys()))
             self.gui.var_algorithm.trace_add("write", self._change_algorithm)
+
+            self.gui.var_seed.set(numpy.random.get_state()[1][0])
 
             default_algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
             self.gui.update_params(self.gui.ALGORIHTM_PARAMS[default_algorithm_name])
@@ -363,11 +368,21 @@ class App:
     def _reset(self):
         self.reset()
 
-    def _step(self):
+    def _step_release(self, *args, **kwargs):
+        self.gui.root.after_cancel(self.run_jobid)
+        if self.algorithm_runner is None:
+            return
+
+        self.algorithm_runner.stop()
+
+    def _step_press(self, *args, **kwargs):
+        STEP_BUTTON_RUN_MS = 700
+
         if self.algorithm_runner is None:
             return
 
         self.algorithm_runner.make_step()
+        self.run_jobid = self.gui.root.after(STEP_BUTTON_RUN_MS, self._run)
 
     def _run(self):
         if self.algorithm_runner is None:
@@ -405,6 +420,8 @@ class App:
         if self.has_gui:
             self.gui.redraw_canvas(self.to_draw)
 
+        self.reset()
+
     def set_algorithm(self, algorithm_name: str):
         self.algorithm_class = self.ALGORITHM_CLASSES[algorithm_name]
         if self.has_gui:
@@ -413,8 +430,6 @@ class App:
     def start(self):
         if self.data_filepath is not None:
             self.load_data()
-
-        self.reset()
 
     def reset(self):
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
@@ -433,6 +448,7 @@ class App:
         total_iterations = 0
 
         if self.has_gui:
+            numpy.random.seed(self.gui.var_seed.get())
             total_iterations = self.gui.var_total_iterations.get()
             for p in self.gui.param_dict:
                 current_params[p] = self.gui.param_dict[p].get()
@@ -469,6 +485,6 @@ class App:
 
 
 if __name__ == "__main__":
-    app = App(sys.argv[1])
+    app = App(sys.argv[1] if len(sys.argv) > 1 else None)
     app.start()
     tkinter.mainloop()
