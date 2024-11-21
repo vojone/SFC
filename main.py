@@ -128,7 +128,7 @@ class GUI:
         self.button_quit.configure(command=quit_fn)
         self.root.protocol("WM_DELETE_WINDOW", quit_fn)
 
-    def draw_path(self, path: list, data: list):
+    def draw_path(self, path: list, data: list, zorder: int = 10):
         for i, p in enumerate(path):
             place_i = p
             next_place_i = path[i + 1 if i + 1 < len(path) else 0]
@@ -138,6 +138,7 @@ class GUI:
                 [place.coords[0], next_place.coords[0]],
                 [place.coords[1], next_place.coords[1]],
                 color="r",
+                zorder=zorder,
             )
 
     def draw_matrix_data(
@@ -148,6 +149,7 @@ class GUI:
         threshold: float = 0.1,
         min_width: float = 0.1,
         max_width: float = 5.0,
+        zorder: int = 10,
     ):
         # Iterate through elements in the upper triangular matrix, because
         # distance matrix/pheromone matrix should be symetric
@@ -176,10 +178,20 @@ class GUI:
                     [place.coords[1], next_place.coords[1]],
                     linewidth=width,
                     color=color,
+                    zorder=zorder,
                 )
 
-    def draw_map(self, data: list):
-        self.graph_axis.scatter(x=[p[1][0] for p in data], y=[p[1][1] for p in data])
+    def draw_map(self, data: list, zorder=90):
+        self.graph_axis.scatter(x=[p[1][0] for p in data], y=[p[1][1] for p in data], zorder=zorder)
+
+    def redraw_canvas(self, to_draw):
+        self.graph_axis.cla()
+
+        for name in to_draw:
+            draw_fn = to_draw[name]
+            draw_fn()
+
+        self.canvas.draw()
 
     def open_data_file(self):
         return tkinter.filedialog.askopenfilename(
@@ -312,6 +324,9 @@ class App:
             self.gui.checkbox_pheromone.configure(command=self._toggle_pheromone)
             self.gui.checkbox_best_path.configure(command=self._toggle_best_path)
 
+            self._toggle_pheromone()
+            self._toggle_best_path()
+
     @property
     def has_gui(self):
         return self.gui is not None
@@ -334,20 +349,13 @@ class App:
         self.best_solution = (self.algorithm.best_path, self.algorithm.best_path_len)
 
         if self.has_gui:
-            self.gui.graph_axis.cla()
-            if self.gui.var_best_path.get() == 1:
-                self.draw_best_path()
-            if self.gui.var_pheronomone.get() == 1:
-                self.draw_best_path()
-
-            self.gui.draw_map(self.data)
-            self.gui.canvas.draw()
+            self.gui.redraw_canvas(self.to_draw)
             if not continues:
                 self.gui.button_step["state"] = "disabled"
                 self.gui.button_run["state"] = "disabled"
             else:
                 self.gui.button_step["state"] = "normal"
-                self.gui.button_run["state"] = " normal"
+                self.gui.button_run["state"] = "normal"
 
     def _stop(self):
         self.algorithm_runner.stop()
@@ -379,18 +387,23 @@ class App:
     def _toggle_pheromone(self):
         if self.gui.var_pheronomone.get() == 1:
             self.to_draw["pheromone"] = self.draw_pheromone
-        else:
+        elif "pheromone" in self.to_draw:
             del self.to_draw["pheromone"]
+        self.gui.redraw_canvas(self.to_draw)
 
     def _toggle_best_path(self):
-        if self.gui.var_pheronomone.get() == 1:
+        if self.gui.var_best_path.get() == 1:
             self.to_draw["best_path"] = self.draw_best_path
-        else:
+        elif "best_path" in self.to_draw:
             del self.to_draw["best_path"]
+        self.gui.redraw_canvas(self.to_draw)
 
     def load_data(self):
         fp = open(self.data_filepath, "r")
         self.data = json.load(fp)
+        self.to_draw["data"] = self.draw_data
+        if self.has_gui:
+            self.gui.redraw_canvas(self.to_draw)
 
     def set_algorithm(self, algorithm_name: str):
         self.algorithm_class = self.ALGORITHM_CLASSES[algorithm_name]
@@ -404,13 +417,11 @@ class App:
         self.reset()
 
     def reset(self):
+        self.best_solution = None
         if self.has_gui:
             self.gui.button_step["state"] = "normal"
             self.gui.button_run["state"] = "normal"
-            self.gui.graph_axis.cla()
-            if self.data is not None:
-                self.gui.draw_map(self.data)
-            self.gui.canvas.draw()
+            self.gui.redraw_canvas(self.to_draw)
 
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
             self.algorithm_runner.terminate()
@@ -440,7 +451,7 @@ class App:
         self.algorithm_runner.start()
 
     def draw_best_path(self):
-        if not self.has_gui:
+        if not self.has_gui or self.best_solution is None:
             return
 
         best_path = self.best_solution[0]
@@ -454,18 +465,9 @@ class App:
             self.algorithm.map.pheromone_m, self.algorithm.map.places
         )
 
-    def redraw_canvas(self):
-        if not self.has_gui:
-            return
-
-        self.gui.graph_axis.cla()
-        for _, draw_fn in self.to_draw:
-            draw_fn()
-
+    def draw_data(self):
         if self.data is not None:
             self.gui.draw_map(self.data)
-
-        self.gui.canvas.draw()
 
 
 if __name__ == "__main__":
