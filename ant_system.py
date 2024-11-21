@@ -51,7 +51,8 @@ class AntSystemCommon(AntAlgorithm):
     Colonny, which differs only in way how ants choose the next place.
     """
 
-    def __init__(self, iterations: int):
+    def __init__(self, places: list[Place], iterations: int, vaporization: float):
+        self.map : Map = Map(places, pheronomone_vaporization=vaporization)
         super().__init__(iterations)
 
     def make_step(self) -> bool:
@@ -100,7 +101,9 @@ class AntSystem(AntSystemCommon):
         visibility_w: float,
         vaporization: float,
     ):
-        self.map = Map(places, pheronomone_vaporization=vaporization)
+        # It is important to call parent initialization first, because it
+        # initializes the map for ants
+        super().__init__(places, iterations, vaporization)
         self.ants = [
             Ant(
                 self.map,
@@ -111,7 +114,6 @@ class AntSystem(AntSystemCommon):
             for _ in range(ant_amount)
         ]
 
-        super().__init__(iterations)
 
 
 class AntColony(AntSystemCommon):
@@ -127,7 +129,7 @@ class AntColony(AntSystemCommon):
         vaporization: float,
         exploitation_coef: float,
     ):
-        self.map = Map(places, pheronomone_vaporization=vaporization)
+        super().__init__(places, iterations, vaporization)
         self.ants = [
             Ant(
                 self.map,
@@ -139,7 +141,6 @@ class AntColony(AntSystemCommon):
         ]
         self.exploitation_coef = exploitation_coef
 
-        super().__init__(iterations)
 
     def next_place_choice(self, ant: Ant):
         """Uses the fixed threshold for decision whether prefer exploitation
