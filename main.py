@@ -7,6 +7,7 @@ import tkinter.filedialog
 import threading
 import tkinter.ttk
 import matplotlib.pyplot as plt
+import math
 import numpy
 import numpy.typing
 
@@ -29,6 +30,14 @@ class GUI:
             "vaporization": (0.2, "Vaporization", tkinter.DoubleVar),
             "exploitation_coef": (0.3, "Exploitation threshold ", tkinter.DoubleVar),
         },
+    }
+
+    ANNOTATION_FONT_DICT = {
+        "backgroundcolor": "#ffffffd0",
+        "color": "gray",
+        "size": 7,
+        "horizontalalignment" : "center",
+        "verticalalignment" : "center"
     }
 
     def __init__(self):
@@ -120,6 +129,36 @@ class GUI:
         )
         self.checkbox_best_path.pack(side=tkinter.BOTTOM)
 
+        self.var_show_place_names = tkinter.IntVar(master=self.root, value=0)
+        self.checkbox_place_names = tkinter.Checkbutton(
+            master=self.root,
+            text="Show place names",
+            variable=self.var_show_place_names,
+            onvalue=1,
+            offvalue=0,
+        )
+        self.checkbox_place_names.pack(side=tkinter.BOTTOM)
+
+        self.var_distances = tkinter.IntVar(master=self.root, value=0)
+        self.checkbox_distances = tkinter.Checkbutton(
+            master=self.root,
+            text="Show path distances",
+            variable=self.var_distances,
+            onvalue=1,
+            offvalue=0,
+        )
+        self.checkbox_distances.pack(side=tkinter.BOTTOM)
+
+        self.var_pheromone_amount = tkinter.IntVar(master=self.root, value=0)
+        self.checkbox_pheromone_amount = tkinter.Checkbutton(
+            master=self.root,
+            text="Show pheromone amount",
+            variable=self.var_pheromone_amount,
+            onvalue=1,
+            offvalue=0,
+        )
+        self.checkbox_pheromone_amount.pack(side=tkinter.BOTTOM)
+
         self.toolbar = NavigationToolbar2Tk(self.canvas, self.root, pack_toolbar=False)
         self.toolbar.update()
         self.toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X)
@@ -128,7 +167,7 @@ class GUI:
         self.button_quit.configure(command=quit_fn)
         self.root.protocol("WM_DELETE_WINDOW", quit_fn)
 
-    def draw_path(self, path: list, data: list, zorder: int = 10):
+    def draw_path(self, path: list, data: list, draw_path_len : bool = False, distance_m : numpy.typing.NDArray = None, zorder: int = 10):
         for i, p in enumerate(path):
             place_i = p
             next_place_i = path[i + 1 if i + 1 < len(path) else 0]
@@ -141,10 +180,21 @@ class GUI:
                 zorder=zorder,
             )
 
+            if draw_path_len and distance_m is not None:
+                path_length = distance_m[place_i][next_place_i]
+                self.graph_axis.text(
+                    x=(place.coords[0] + next_place.coords[0]) / 2,
+                    y=(place.coords[1] + next_place.coords[1]) / 2,
+                    s=f"{path_length:g}",
+                    zorder=zorder,
+                    fontdict=self.ANNOTATION_FONT_DICT,
+                )
+
     def draw_matrix_data(
         self,
         matrix: numpy.typing.NDArray,
         data: list,
+        draw_values: bool = False,
         color: str = "g",
         threshold: float = 0.1,
         min_width: float = 0.1,
@@ -169,7 +219,9 @@ class GUI:
                     continue
 
                 # Renormalize to <0.0, 1.0> because the interval was clipped by threshold
-                renormalized_value = (normalized_value - threshold) / (1 - threshold + 1e-30)
+                renormalized_value = (normalized_value - threshold) / (
+                    1 - threshold + 1e-30
+                )
                 width = renormalized_value * (max_width - min_width) + min_width
                 place = data[place_i]
                 next_place = data[next_place_i]
@@ -180,9 +232,30 @@ class GUI:
                     color=color,
                     zorder=zorder,
                 )
+                if draw_values:
+                    # Draw text value in the middle of path
+                    self.graph_axis.text(
+                        x=(place.coords[0] + next_place.coords[0]) / 2,
+                        y=(place.coords[1] + next_place.coords[1]) / 2,
+                        s=f"{value:g}",
+                        zorder=zorder,
+                        fontdict=self.ANNOTATION_FONT_DICT,
+                    )
 
-    def draw_map(self, data: list, zorder=90):
-        self.graph_axis.scatter(x=[p[1][0] for p in data], y=[p[1][1] for p in data], zorder=zorder)
+    def draw_data(self, data: list, zorder=90):
+        self.graph_axis.scatter(
+            x=[p[1][0] for p in data], y=[p[1][1] for p in data], zorder=zorder
+        )
+
+    def draw_data_names(self, data: list, zorder=90):
+        for p in data:
+            self.graph_axis.text(
+                x=p[1][0],
+                y=p[1][1],
+                s=f" {p[0]}",
+                zorder=zorder,
+                fontdict={"size": 9},
+            )
 
     def redraw_canvas(self, to_draw):
         self.graph_axis.cla()
@@ -210,12 +283,12 @@ class GUI:
             var_param_entry = var_type(master=self.param_frame, value=default)
 
             label_param_entry = tkinter.Label(master=self.param_frame, text=label_text)
-            label_param_entry.pack(side=tkinter.TOP)
+            # label_param_entry.pack(side=tkinter.TOP)
 
             param_entry = tkinter.Entry(
                 name=param_name, master=self.param_frame, textvariable=var_param_entry
             )
-            param_entry.pack(side=tkinter.TOP)
+            # param_entry.pack(side=tkinter.TOP)
 
             self.param_dict[param_name] = var_param_entry
 
@@ -314,8 +387,8 @@ class App:
             self.gui.button_run.configure(command=self._run)
             self.gui.button_stop.configure(command=self._stop)
 
-            self.gui.button_step.bind('<ButtonPress-1>', self._step_press)
-            self.gui.button_step.bind('<ButtonRelease-1>', self._step_release)
+            self.gui.button_step.bind("<ButtonPress-1>", self._step_press)
+            self.gui.button_step.bind("<ButtonRelease-1>", self._step_release)
             self.gui.button_reset.configure(command=self._reset)
 
             self.gui.set_algorithm_options(list(self.ALGORITHM_CLASSES.keys()))
@@ -329,7 +402,10 @@ class App:
             self.gui.checkbox_pheromone.configure(command=self._toggle_pheromone)
             self.gui.checkbox_best_path.configure(command=self._toggle_best_path)
 
-            self._toggle_pheromone()
+            self.gui.checkbox_place_names.configure(command=self._toggle_place_names)
+            self.gui.checkbox_distances.configure(command=self._toggle_best_path)
+            self.gui.checkbox_pheromone_amount.configure(command=self._toggle_pheromone)
+
             self._toggle_best_path()
 
     @property
@@ -369,14 +445,16 @@ class App:
         self.reset()
 
     def _step_release(self, *args, **kwargs):
-        self.gui.root.after_cancel(self.run_jobid)
+        if self.run_jobid is not None:
+            self.gui.root.after_cancel(self.run_jobid)
+        self.run_jobid = None
         if self.algorithm_runner is None:
             return
 
         self.algorithm_runner.stop()
 
     def _step_press(self, *args, **kwargs):
-        STEP_BUTTON_RUN_MS = 700
+        STEP_BUTTON_RUN_MS = 600
 
         if self.algorithm_runner is None:
             return
@@ -393,6 +471,8 @@ class App:
 
     def _open_file(self):
         self.data_filepath = self.gui.open_data_file()
+        if self.data_filepath is None or self.data_filepath == "":
+            return
 
         data_filename = os.path.basename(self.data_filepath)
         self.gui.var_opened_file.set(data_filename)
@@ -401,16 +481,31 @@ class App:
 
     def _toggle_pheromone(self):
         if self.gui.var_pheronomone.get() == 1:
-            self.to_draw["pheromone"] = self.draw_pheromone
-        elif "pheromone" in self.to_draw:
-            del self.to_draw["pheromone"]
-        self.gui.redraw_canvas(self.to_draw)
+            self.add_to_draw("pheromone", self.draw_pheromone)
+        else:
+            self.remove_to_draw("pheromone")
 
     def _toggle_best_path(self):
         if self.gui.var_best_path.get() == 1:
-            self.to_draw["best_path"] = self.draw_best_path
-        elif "best_path" in self.to_draw:
-            del self.to_draw["best_path"]
+            self.add_to_draw("best_path", self.draw_best_path)
+        else:
+            self.remove_to_draw("best_path")
+
+    def _toggle_place_names(self):
+        if self.gui.var_show_place_names.get() == 1:
+            self.add_to_draw("place_names", self.draw_data_names)
+        else:
+            self.remove_to_draw("place_names")
+
+    def add_to_draw(self, name : str, draw_fn):
+        self.to_draw[name] = draw_fn
+        self.gui.redraw_canvas(self.to_draw)
+
+    def remove_to_draw(self, name : str):
+        if name not in self.to_draw:
+            return
+
+        del self.to_draw[name]
         self.gui.redraw_canvas(self.to_draw)
 
     def load_data(self):
@@ -469,19 +564,23 @@ class App:
             return
 
         best_path = self.best_solution[0]
-        self.gui.draw_path(best_path, self.algorithm.map.places)
+        self.gui.draw_path(best_path, self.algorithm.map.places, bool(self.gui.var_distances.get()), self.algorithm.map.distance_m)
 
     def draw_pheromone(self):
         if not self.has_gui:
             return
 
         self.gui.draw_matrix_data(
-            self.algorithm.map.pheromone_m, self.algorithm.map.places
+            self.algorithm.map.pheromone_m, self.algorithm.map.places, bool(self.gui.var_pheromone_amount.get())
         )
 
     def draw_data(self):
         if self.data is not None:
-            self.gui.draw_map(self.data)
+            self.gui.draw_data(self.data)
+
+    def draw_data_names(self):
+        if self.data is not None:
+            self.gui.draw_data_names(self.data)
 
 
 if __name__ == "__main__":
