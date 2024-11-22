@@ -7,13 +7,14 @@ import tkinter.filedialog
 import threading
 import tkinter.ttk
 import matplotlib.pyplot as plt
-import math
 import numpy
 import numpy.typing
 
 from ant_algorithm import AntAlgorithm, AntSystem, AntColony
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk, FigureCanvasTkAgg
 
+def get_seed():
+    return numpy.random.randint(1, int(1e9))
 
 class GUI:
     ALGORIHTM_PARAMS = {
@@ -394,8 +395,6 @@ class App:
             self.gui.set_algorithm_options(list(self.ALGORITHM_CLASSES.keys()))
             self.gui.var_algorithm.trace_add("write", self._change_algorithm)
 
-            self.gui.var_seed.set(numpy.random.get_state()[1][0])
-
             default_algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
             self.gui.update_params(self.gui.ALGORIHTM_PARAMS[default_algorithm_name])
 
@@ -529,6 +528,8 @@ class App:
     def reset(self):
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
             self.algorithm_runner.terminate()
+        if self.has_gui:
+            self.gui.var_seed.set(get_seed())
 
         self.best_solution = None
         self.algorithm_init()
