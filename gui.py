@@ -81,6 +81,12 @@ class GUI:
             side=tkinter.TOP, fill=tkinter.BOTH, expand=True
         )
 
+        self.button_save = tkinter.Button(master=self.root, text="Save changes")
+        self.button_save.pack(side=tkinter.BOTTOM)
+
+        self.button_restore = tkinter.Button(master=self.root, text="Restore")
+        self.button_restore.pack(side=tkinter.BOTTOM)
+
         self.button_run = tkinter.Button(master=self.root, text="Run")
         self.button_run.pack(side=tkinter.BOTTOM)
 
@@ -281,12 +287,12 @@ class GUI:
             var_param_entry = var_type(master=self.param_frame, value=default)
 
             label_param_entry = tkinter.Label(master=self.param_frame, text=label_text)
-            # label_param_entry.pack(side=tkinter.TOP)
+            label_param_entry.pack(side=tkinter.TOP)
 
             param_entry = tkinter.Entry(
                 name=param_name, master=self.param_frame, textvariable=var_param_entry
             )
-            # param_entry.pack(side=tkinter.TOP)
+            param_entry.pack(side=tkinter.TOP)
 
             self.param_dict[param_name] = var_param_entry
 

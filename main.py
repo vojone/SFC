@@ -92,6 +92,9 @@ class App:
 
         default_algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
         self.algorithm_class = self.ALGORITHM_CLASSES[default_algorithm_name]
+        self.current_params = {}
+        self.total_iterations = 0
+        self.seed = None
 
         if has_gui:
             self.gui = GUI()
@@ -104,6 +107,8 @@ class App:
             self.gui.button_open_file.configure(command=self._open_file)
             self.gui.button_run.configure(command=self._run)
             self.gui.button_stop.configure(command=self._stop)
+            self.gui.button_save.configure(command=self._save)
+            self.gui.button_restore.configure(command=self._restore)
 
             self.gui.button_step.bind("<ButtonPress-1>", self._step_press)
             self.gui.button_step.bind("<ButtonRelease-1>", self._step_release)
@@ -136,9 +141,17 @@ class App:
             self.gui.root.quit()
             self.gui.root.destroy()
 
+    def _save(self):
+        self.save_params()
+        self.reset(reseed=False)
+
+    def _restore(self):
+        self.restore_params()
+
     def _change_algorithm(self, *args, **kwargs):
         algorithm_name = self.gui.var_algorithm.get()
         self.set_algorithm(algorithm_name)
+        self.save_params()
         self.reset()
         print(f"Algorithm changed to {self.gui.var_algorithm.get()}")
 
@@ -239,15 +252,19 @@ class App:
             self.gui.update_params(self.gui.ALGORIHTM_PARAMS[algorithm_name])
 
     def start(self):
+        self.save_params()
         if self.data_filepath is not None:
             self.load_data()
 
-    def reset(self):
+    def reset(self, reseed : bool = True):
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
             self.algorithm_runner.terminate()
-        if self.has_gui:
-            self.gui.var_seed.set(get_seed())
+        if self.has_gui and reseed:
+            if reseed:
+                self.seed = get_seed()
+                self.gui.var_seed.set(self.seed)
 
+        numpy.random.seed(self.seed)
         self.best_solution = None
         self.algorithm_init()
         if self.has_gui:
@@ -256,20 +273,29 @@ class App:
             self.gui.button_run["state"] = "normal"
             self.gui.redraw_canvas(self.to_draw)
 
+    def save_params(self):
+        if not self.has_gui:
+            return
+
+        self.seed = self.gui.var_seed.get()
+        self.total_iterations = self.gui.var_total_iterations.get()
+        for p in self.gui.param_dict:
+            self.current_params[p] = self.gui.param_dict[p].get()
+
+    def restore_params(self):
+        if not self.has_gui:
+            return
+
+        self.gui.var_seed.set(self.seed)
+        self.gui.var_total_iterations.set(self.total_iterations)
+        for p in self.gui.param_dict:
+            self.gui.param_dict[p].set(self.current_params[p])
+
     def algorithm_init(self):
-        current_params = {}
-        total_iterations = 0
-
-        if self.has_gui:
-            numpy.random.seed(self.gui.var_seed.get())
-            total_iterations = self.gui.var_total_iterations.get()
-            for p in self.gui.param_dict:
-                current_params[p] = self.gui.param_dict[p].get()
-
         self.algorithm = self.algorithm_class(
             AntAlgorithm.tuples_to_places(self.data),
-            iterations=total_iterations,
-            **current_params,
+            iterations=self.total_iterations,
+            **self.current_params,
         )
         self.algorithm.start()
         self.algorithm_runner = AlgorithmRunner(
