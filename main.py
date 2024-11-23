@@ -4,6 +4,7 @@ import sys
 import os
 import json
 import threading
+import logging
 import numpy
 import numpy.typing
 
@@ -78,7 +79,15 @@ class App:
         "Ant Colony": AntColony,
     }
 
-    def __init__(self, data_filepath: str | None, has_gui: bool = True):
+    TEMRINAL_LOG_FORMAT_STR = "%(levelname)s: %(message)s"
+
+    def __init__(
+        self,
+        data_filepath: str | None,
+        seed: int | None = None,
+        has_gui: bool = True,
+        logging_enabled: str = True,
+    ):
         self.data_filepath = data_filepath
 
         self.data: list | None = None
@@ -94,10 +103,17 @@ class App:
         self.algorithm_class = self.ALGORITHM_CLASSES[default_algorithm_name]
         self.current_params = {}
         self.total_iterations = 0
-        self.seed = None
+        self.seed = seed
 
         if has_gui:
-            self.gui = GUI()
+            logger = None
+            if logging_enabled:
+                logging.basicConfig(
+                    level=logging.INFO, format=self.TEMRINAL_LOG_FORMAT_STR
+                )
+                logger = logging.getLogger()
+
+            self.gui = GUI(logger)
             self.gui.set_quit_fn(self._quit)
             self.gui.var_opened_file.set(
                 os.path.basename(data_filepath)
@@ -123,9 +139,10 @@ class App:
             self.gui.checkbox_pheromone.configure(command=self._toggle_pheromone)
             self.gui.checkbox_best_path.configure(command=self._toggle_best_path)
 
-            self.gui.checkbox_place_names.configure(command=self._toggle_place_names)
-            self.gui.checkbox_distances.configure(command=self._toggle_best_path)
-            self.gui.checkbox_pheromone_amount.configure(command=self._toggle_pheromone)
+            self.gui.checkbox_place_names_on_change = self._toggle_place_names
+            self.gui.checkbox_distances_on_change = self._toggle_best_path
+            self.gui.checkbox_pheromone_amount_on_change = self._toggle_pheromone
+            self.gui.use_custom_seed = self._use_seed
 
             self._toggle_best_path()
 
@@ -141,12 +158,22 @@ class App:
             self.gui.root.quit()
             self.gui.root.destroy()
 
+    def _use_seed(self):
+        self.seed = self.gui.var_seed.get()
+        self.reset(reseed=False)
+
     def _save(self):
         self.save_params()
-        self.reset(reseed=False)
+        self.reset()
+        logging.info("Changes of params succesfully saved")
+        self.gui.button_save["state"] = "disabled"
+        self.gui.button_restore["state"] = "disabled"
 
     def _restore(self):
         self.restore_params()
+        self.reset()
+        self.gui.button_save["state"] = "disabled"
+        self.gui.button_restore["state"] = "disabled"
 
     def _change_algorithm(self, *args, **kwargs):
         algorithm_name = self.gui.var_algorithm.get()
@@ -256,18 +283,18 @@ class App:
         if self.data_filepath is not None:
             self.load_data()
 
-    def reset(self, reseed : bool = True):
+    def reset(self, reseed: bool = True):
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
             self.algorithm_runner.terminate()
-        if self.has_gui and reseed:
-            if reseed:
-                self.seed = get_seed()
-                self.gui.var_seed.set(self.seed)
+        if self.has_gui and reseed and self.gui.var_fixed_seed.get() == 0:
+            self.seed = get_seed()
+            self.gui.var_seed.set(self.seed)
 
         numpy.random.seed(self.seed)
         self.best_solution = None
         self.algorithm_init()
         if self.has_gui:
+            self.gui.clear_log()
             self.gui.var_iterations.set(self.algorithm.current_iteration)
             self.gui.button_step["state"] = "normal"
             self.gui.button_run["state"] = "normal"
@@ -277,19 +304,19 @@ class App:
         if not self.has_gui:
             return
 
-        self.seed = self.gui.var_seed.get()
         self.total_iterations = self.gui.var_total_iterations.get()
         for p in self.gui.param_dict:
-            self.current_params[p] = self.gui.param_dict[p].get()
+            self.current_params[p] = self.gui.param_dict[p][0].get()
+        self.gui.param_stored()
 
     def restore_params(self):
         if not self.has_gui:
             return
 
-        self.gui.var_seed.set(self.seed)
         self.gui.var_total_iterations.set(self.total_iterations)
         for p in self.gui.param_dict:
-            self.gui.param_dict[p].set(self.current_params[p])
+            self.gui.param_dict[p][0].set(self.current_params[p])
+        self.gui.param_stored()
 
     def algorithm_init(self):
         self.algorithm = self.algorithm_class(
