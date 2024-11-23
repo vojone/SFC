@@ -146,6 +146,7 @@ class App:
 
             self.gui.save_params_cb = self._save_params_to_file
             self.gui.save_params_with_seed_cb = self._save_params_with_seed_to_file
+            self.gui.load_params_cb = self._load_params
 
             self._toggle_best_path()
 
@@ -160,6 +161,47 @@ class App:
         if self.has_gui:
             self.gui.root.quit()
             self.gui.root.destroy()
+
+    def _load_params(self):
+        filename = self.gui.open_params_file()
+        if not filename:
+            return
+
+        fp = open(filename, mode="r")
+        params_dict = json.load(fp)
+        self.load_params(params_dict)
+        self.save_params()
+
+    def load_params(self, params_dict : dict):
+        if "algorithm" not in params_dict:
+            raise Exception("missing parameter 'algorithm'")
+        self.set_algorithm(params_dict["algorithm"])
+
+        if "total_iterations" not in params_dict:
+            raise Exception("missing parameter 'total_iterations'")
+        self.total_iterations = params_dict["total_iterations"]
+        if self.has_gui:
+            self.gui.var_total_iterations.set(params_dict["total_iterations"])
+
+        if "seed" in params_dict:
+            self.seed = params_dict["seed"]
+            if self.has_gui:
+                self.gui.var_seed.set(params_dict["seed"])
+
+        for param_name in params_dict:
+            if param_name in ["seed", "total_iterations", "algorithm"]:
+                continue
+
+            if param_name not in self.current_params:
+                raise Exception(f"unrecognized param '{param_name}'")
+
+            self.current_params[param_name] = params_dict[param_name]
+            if self.has_gui:
+                self.gui.param_dict[param_name][0].set(params_dict[param_name])
+                if param_name not in self.current_params:
+                    raise Exception(f"unrecognized param '{param_name}'")
+
+        self.reset(reseed=("seed" not in params_dict))
 
     def _use_seed(self):
         self.seed = self.gui.var_seed.get()
@@ -298,8 +340,6 @@ class App:
         fp = open(self.data_filepath, "r")
         self.data = json.load(fp)
         self.to_draw["data"] = self.draw_data
-        if self.has_gui:
-            self.gui.redraw_canvas(self.to_draw)
 
         self.reset()
 
@@ -316,15 +356,16 @@ class App:
     def reset(self, reseed: bool = True):
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
             self.algorithm_runner.terminate()
-        if self.has_gui and reseed and self.gui.var_fixed_seed.get() == 0:
-            self.seed = get_seed()
-            self.gui.var_seed.set(self.seed)
+        if self.has_gui:
+            self.gui.clear_log()
+            if reseed and self.gui.var_fixed_seed.get() == 0:
+                self.seed = get_seed()
+                self.gui.var_seed.set(self.seed)
 
         numpy.random.seed(self.seed)
         self.best_solution = None
         self.algorithm_init()
         if self.has_gui:
-            self.gui.clear_log()
             self.gui.var_iterations.set(self.algorithm.current_iteration)
             self.gui.button_step["state"] = "normal"
             self.gui.button_run["state"] = "normal"
@@ -335,6 +376,7 @@ class App:
             return
 
         self.total_iterations = self.gui.var_total_iterations.get()
+        self.current_params.clear()
         for p in self.gui.param_dict:
             self.current_params[p] = self.gui.param_dict[p][0].get()
         self.gui.param_stored()
@@ -364,6 +406,8 @@ class App:
             **self.current_params,
         )
         self.algorithm.start()
+        if self.has_gui:
+            logging.info(f"{self.gui.var_algorithm.get()} initialized")
         self.algorithm_runner = AlgorithmRunner(
             self.algorithm, self.gui, self._algorithm_cb
         )

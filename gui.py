@@ -135,13 +135,19 @@ class GUI:
         self.file_menu.add_command(label="Save log", command=self.save_log)
         self.file_menu.add_separator()
 
+        self.on_quit = None
         self.save_params_cb = None
         self.save_params_with_seed_cb = None
+        self.load_params_cb = None
         self.file_menu.add_command(label="Save params", command=self.save_params)
         self.file_menu.add_command(label="Save params with seed", command=self.save_params_with_seed)
         self.file_menu.add_separator()
+        self.file_menu.add_command(label="Load params", command=self.load_params)
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Quit", command=self.quit)
 
         self.toolbar.add_cascade(label="File", menu=self.file_menu)
+
         self.toolbar.add_command(label="Settings", command=self.open_setings_menu)
         self.toolbar.add_command(label="Log", command=self.open_log_window)
 
@@ -158,9 +164,17 @@ class GUI:
             logger = logging.getLogger()
             logger.addHandler(text_handler)
 
+    def quit(self):
+        if self.on_quit:
+            self.on_quit()
+
     def set_quit_fn(self, quit_fn):
-        self.file_menu.add_command(label="Quit", command=quit_fn)
+        self.on_quit = quit_fn
         self.root.protocol("WM_DELETE_WINDOW", quit_fn)
+
+    def load_params(self):
+        if self.load_params_cb:
+            self.load_params_cb()
 
     def open_log_window(self):
         def on_close():
@@ -370,7 +384,14 @@ class GUI:
     def open_data_file(self):
         return tkinter.filedialog.askopenfilename(
             master=self.root,
-            title="Select input file",
+            title="Select input file with data",
+            filetypes=(("JSON files", "*.json*"), ("All files", "*.*")),
+        )
+
+    def open_params_file(self):
+        return tkinter.filedialog.askopenfilename(
+            master=self.root,
+            title="Select file with params",
             filetypes=(("JSON files", "*.json*"), ("All files", "*.*")),
         )
 
@@ -419,7 +440,9 @@ class GUI:
     def clear_log(self):
         self.log.clear()
         if self.logging_widget is not None:
-            self.logging_widget.delete(1, tkinter.END)
+            self.logging_widget.configure(state="normal")
+            self.logging_widget.delete(1.0, tkinter.END)
+            self.logging_widget.configure(state="disabled")
 
 
 class GUILogHandler(logging.Handler):
