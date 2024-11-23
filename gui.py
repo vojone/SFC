@@ -166,7 +166,8 @@ class GUI:
         self.logging_widget = tkinter.scrolledtext.ScrolledText(master=log_window)
         self.logging_widget.pack(expand=True, fill="both")
         self.logging_widget.configure(state="normal")
-        self.logging_widget.insert(tkinter.END, "\n".join(self.log) + "\n")
+        trailing_newline = "\n" if self.log else ""
+        self.logging_widget.insert(tkinter.END, "\n".join(self.log) + trailing_newline)
         self.logging_widget.configure(state="disabled")
 
     def save_log(self):
