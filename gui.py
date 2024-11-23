@@ -1,4 +1,5 @@
 import tkinter
+import tkinter.filedialog
 import tkinter.scrolledtext
 import tkinter.ttk
 import matplotlib.pyplot as plt
@@ -132,6 +133,14 @@ class GUI:
         self.root.config(menu=self.toolbar)
         self.file_menu = tkinter.Menu(self.toolbar, tearoff="off")
         self.file_menu.add_command(label="Save log", command=self.save_log)
+        self.file_menu.add_separator()
+
+        self.save_params_cb = None
+        self.save_params_with_seed_cb = None
+        self.file_menu.add_command(label="Save params", command=self.save_params)
+        self.file_menu.add_command(label="Save params with seed", command=self.save_params_with_seed)
+        self.file_menu.add_separator()
+
         self.toolbar.add_cascade(label="File", menu=self.file_menu)
         self.toolbar.add_command(label="Settings", command=self.open_setings_menu)
         self.toolbar.add_command(label="Log", command=self.open_log_window)
@@ -177,6 +186,24 @@ class GUI:
         fp = open(filename, mode="w")
         fp.write("\n".join(self.log) + "\n")
         fp.close()
+
+    def save_params(self):
+        if self.save_params_cb is not None:
+            self.save_params_cb()
+
+    def save_params_with_seed(self):
+        if self.save_params_with_seed_cb is not None:
+            self.save_params_with_seed_cb()
+
+    def open_save_params(self, custom_str : str = ""):
+        timestamp = datetime.now().strftime("%H%M%S")
+        alg_name = self.var_algorithm.get().replace(" ", "")
+        filename = f"{alg_name}-params{custom_str}-{timestamp}.json"
+        return tkinter.filedialog.asksaveasfilename(
+            confirmoverwrite=True,
+            title="Save Params As",
+            initialfile=filename
+        )
 
     def open_setings_menu(self):
         settings_window = tkinter.Toplevel(self.root)

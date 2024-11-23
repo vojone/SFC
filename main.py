@@ -144,6 +144,9 @@ class App:
             self.gui.checkbox_pheromone_amount_on_change = self._toggle_pheromone
             self.gui.use_custom_seed = self._use_seed
 
+            self.gui.save_params_cb = self._save_params_to_file
+            self.gui.save_params_with_seed_cb = self._save_params_with_seed_to_file
+
             self._toggle_best_path()
 
     @property
@@ -259,6 +262,27 @@ class App:
         else:
             self.remove_to_draw("place_names")
 
+    def _save_params_to_file(self):
+        filename = self.gui.open_save_params()
+        if not filename:
+            return
+
+        fp = open(filename, mode="w")
+        params = self.make_params_dict()
+        fp.write(json.dumps(params, indent=4))
+        fp.close()
+
+    def _save_params_with_seed_to_file(self):
+        filename = self.gui.open_save_params(custom_str="-seed")
+        if not filename:
+            return
+
+        fp = open(filename, mode="w")
+        params = self.make_params_dict()
+        params["seed"] = self.seed
+        fp.write(json.dumps(params, indent=4))
+        fp.close()
+
     def add_to_draw(self, name: str, draw_fn):
         self.to_draw[name] = draw_fn
         self.gui.redraw_canvas(self.to_draw)
@@ -323,6 +347,15 @@ class App:
         for p in self.gui.param_dict:
             self.gui.param_dict[p][0].set(self.current_params[p])
         self.gui.param_stored()
+
+    def make_params_dict(self) -> dict:
+        result = {}
+        result["algorithm"] = self.gui.var_algorithm.get()
+        result["total_iterations"] = self.total_iterations
+        for p in self.current_params:
+            result[p] = self.current_params[p]
+
+        return result
 
     def algorithm_init(self):
         self.algorithm = self.algorithm_class(
