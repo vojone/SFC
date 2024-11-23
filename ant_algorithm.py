@@ -1,5 +1,6 @@
 import numpy
 import abc
+import logging
 
 from ant import Ant
 from ant_map import Map, Place
@@ -76,8 +77,9 @@ class AntSystemCommon(AntAlgorithm):
             if self._best_path_len is None or path_len < self._best_path_len:
                 self._best_path_len = path_len
                 self._best_path = a.get_path()
-                print(
-                    f"Best path len: {self._best_path_len} Best path: {self._best_path}"
+                logging.info(
+                    f"improvement: it={self.current_iteration}, "
+                    f"len={self._best_path_len:g}, path={self._best_path}"
                 )
 
             pheronomone_update_matrix += a.get_new_pheromone_matrix()

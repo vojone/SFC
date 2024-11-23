@@ -122,7 +122,7 @@ class Ant:
             raise Exception("Ant is already placed somewhere!")
 
         initial_place = numpy.random.randint(0, len(self.map.places))
-        self.move_to(initial_place)
+        self.move_to(int(initial_place))
 
     def make_step(self) -> bool:
         if self.position is None:
@@ -132,6 +132,6 @@ class Ant:
             return True
 
         next_place_index = self.next_place_choice_fn(self)
-        self.move_to(next_place_index)
+        self.move_to(int(next_place_index))
 
         return False

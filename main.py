@@ -185,6 +185,12 @@ class App:
     def _algorithm_cb(self, continues: bool):
         self.best_solution = (self.algorithm.best_path, self.algorithm.best_path_len)
 
+        if self.algorithm.is_finished:
+            logging.info(
+                f"Finished after {self.algorithm.current_iteration} it., best: "
+                f"len={self.best_solution[1]:g}, path={self.best_solution[0]}"
+            )
+
         if self.has_gui:
             self.gui.redraw_canvas(self.to_draw)
             if not continues:

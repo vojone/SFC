@@ -162,8 +162,8 @@ class GUI:
         log_window.transient(self.root)
         log_window.title("ACO - Log")
         log_window.protocol("WM_DELETE_WINDOW", on_close)
-
         self.logging_widget = tkinter.scrolledtext.ScrolledText(master=log_window)
+        self.logging_widget.config(spacing3=10)
         self.logging_widget.pack(expand=True, fill="both")
         self.logging_widget.configure(state="normal")
         trailing_newline = "\n" if self.log else ""
