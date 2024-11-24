@@ -214,9 +214,18 @@ class GUI:
         self.logging_widget.configure(state="disabled")
 
     def save_log(self):
-        timestamp = datetime.now().strftime("%m-%d-%H-%M-%S")
+        timestamp = datetime.now().strftime("%m-%d-%H%M%S")
         alg_name = self.var_algorithm.get().replace(" ", "")
-        filename = f"{alg_name}-{timestamp}.log"
+        ifilename = f"{alg_name}-{timestamp}.log"
+        filename = tkinter.filedialog.asksaveasfilename(
+            confirmoverwrite=True,
+            title="Save Log As",
+            initialfile=ifilename
+        )
+
+        if not filename:
+            return
+
         fp = open(filename, mode="w")
         fp.write("\n".join(self.log) + "\n")
         fp.close()

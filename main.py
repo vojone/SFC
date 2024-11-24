@@ -173,7 +173,7 @@ class App:
         if self.save_params():
             self.reset(reseed=("seed" not in params_dict))
 
-    def load_params(self, params_dict : dict):
+    def load_params(self, params_dict: dict):
         if "algorithm" not in params_dict:
             raise Exception("missing parameter 'algorithm'")
         self.set_algorithm(params_dict["algorithm"])
@@ -233,7 +233,7 @@ class App:
 
         if self.algorithm.is_finished:
             logging.info(
-                f"Finished after {self.algorithm.current_iteration} it., best: "
+                f"Finished in it={self.algorithm.current_iteration}, best: "
                 f"len={self.best_solution[1]:g}, path={self.best_solution[0]}"
             )
 
@@ -406,14 +406,22 @@ class App:
         return result
 
     def algorithm_init(self):
+        if self.has_gui:
+            stored_params_str = f"initializing with seed={self.seed}, total_iterations={self.total_iterations}"
+            for p in self.current_params:
+                stored_params_str += f", {p}={self.current_params[p]}"
+            logging.info(stored_params_str)
+
         self.algorithm = self.algorithm_class(
             AntAlgorithm.tuples_to_places(self.data),
             iterations=self.total_iterations,
             **self.current_params,
         )
         self.algorithm.start()
+
         if self.has_gui:
-            logging.info(f"{self.gui.var_algorithm.get()} initialized")
+            logging.info(f"'{self.gui.var_algorithm.get()}' initialized")
+
         self.algorithm_runner = AlgorithmRunner(
             self.algorithm, self.gui, self._algorithm_cb
         )
