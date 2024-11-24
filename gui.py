@@ -23,7 +23,7 @@ def valid_float(x : str):
     except ValueError:
         raise Exception(f"expected float, got {x}")
 
-def mfloat_between_one_and_zero(x):
+def float_between_one_and_zero(x):
     try:
         if float(x) < 0 or float(x) > 1.0:
             raise ValueError("outside the interval")
@@ -36,14 +36,40 @@ class GUI:
             "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
             "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
             "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
-            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, mfloat_between_one_and_zero),
+            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+        },
+        "Ant Density": {
+            "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
+            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
+            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
+            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+        },
+        "Ant Quantity": {
+            "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
+            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
+            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
+            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
         },
         "Ant Colony": {
             "ant_amount": (20, "Number Of Ants", tkinter.DoubleVar, positive_integer),
             "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
             "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
-            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, mfloat_between_one_and_zero),
-            "exploitation_coef": (0.3, "Exploitation threshold ", tkinter.DoubleVar, mfloat_between_one_and_zero),
+            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+            "exploitation_coef": (0.3, "Exploitation threshold ", tkinter.DoubleVar, float_between_one_and_zero),
+        },
+        "Elitist Strategy": {
+            "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
+            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
+            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
+            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+        },
+        "Min-Max Ant System": {
+            "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
+            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
+            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
+            "vaporization": (5e-5, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+            "min_pheromone": (0.7, "Min pheromone", tkinter.DoubleVar, valid_float),
+            "max_pheromone": (1.0, "Max pheromone", tkinter.DoubleVar, valid_float),
         },
     }
 

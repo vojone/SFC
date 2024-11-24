@@ -10,6 +10,7 @@ class Ant:
         self,
         map: Map,
         next_place_choice_fn,
+        pheromone_fn,
         pheromone_weight: int = 1,
         visibility_weight: int = 1,
         pheronome_deposit: float = 1.0,
@@ -20,6 +21,7 @@ class Ant:
         self.visibility_w = visibility_weight
         self.pheronome_deposit = pheronome_deposit
         self.next_place_choice_fn = next_place_choice_fn
+        self.pheromone_fn = pheromone_fn
 
     @property
     def position(self) -> int | None:
@@ -92,18 +94,50 @@ class Ant:
 
         return path_len
 
-    def get_new_pheromone_matrix(self) -> numpy.typing.NDArray:
-        if self.position is None:
+    def get_new_pheromone_matrix(self):
+        return self.pheromone_fn(self)
+
+    @classmethod
+    def ant_system_pheromone(cls, ant : Ant) -> numpy.typing.NDArray:
+        if ant.position is None:
             raise Exception("Ant is not initialized!")
 
-        new_pheromone = numpy.zeros([len(self.map.places), len(self.map.places)])
-        path_len = self.get_path_len()
-        for i, place in enumerate(self.get_path()):
-            next_place = self.tabu[i + 1] if i + 1 < len(self.tabu) else self.tabu[0]
-
-            new_pheromone[place, next_place] = self.pheronome_deposit / path_len
+        new_pheromone = numpy.zeros([len(ant.map.places), len(ant.map.places)])
+        path_len = ant.get_path_len()
+        for i, place in enumerate(ant.get_path()):
+            next_place = ant.tabu[i + 1] if i + 1 < len(ant.tabu) else ant.tabu[0]
+            new_pheromone[place, next_place] = ant.pheronome_deposit / path_len
             # Pheromone matrix is symmetric, so update also the corresponding element
-            new_pheromone[next_place, place] = self.pheronome_deposit / path_len
+            new_pheromone[next_place, place] = ant.pheronome_deposit / path_len
+
+        return new_pheromone
+
+    @classmethod
+    def ant_density_pheromone(cls, ant : Ant) -> numpy.typing.NDArray:
+        if ant.position is None:
+            raise Exception("Ant is not initialized!")
+
+        new_pheromone = numpy.zeros([len(ant.map.places), len(ant.map.places)])
+        for i, place in enumerate(ant.get_path()):
+            next_place = ant.tabu[i + 1] if i + 1 < len(ant.tabu) else ant.tabu[0]
+            new_pheromone[place, next_place] = ant.pheronome_deposit
+            # Pheromone matrix is symmetric, so update also the corresponding element
+            new_pheromone[next_place, place] = ant.pheronome_deposit
+
+        return new_pheromone
+
+    @classmethod
+    def ant_quantity_pheromone(cls, ant : Ant) -> numpy.typing.NDArray:
+        if ant.position is None:
+            raise Exception("Ant is not initialized!")
+
+        new_pheromone = numpy.zeros([len(ant.map.places), len(ant.map.places)])
+        for i, place in enumerate(ant.get_path()):
+            next_place = ant.tabu[i + 1] if i + 1 < len(ant.tabu) else ant.tabu[0]
+            edge_len = ant.map.distance_m[place, next_place]
+            new_pheromone[place, next_place] = ant.pheronome_deposit / (edge_len + 1e-30)
+            # Pheromone matrix is symmetric, so update also the corresponding element
+            new_pheromone[next_place, place] = ant.pheronome_deposit / (edge_len + 1e-30)
 
         return new_pheromone
 

@@ -8,8 +8,8 @@ import logging
 import numpy
 import numpy.typing
 
+import ant_algorithm as alg
 from gui import GUI
-from ant_algorithm import AntAlgorithm, AntSystem, AntColony
 
 
 def get_seed():
@@ -17,7 +17,7 @@ def get_seed():
 
 
 class AlgorithmRunner:
-    def __init__(self, algorithm: AntAlgorithm, gui: GUI | None, done_callback):
+    def __init__(self, algorithm: alg.AntAlgorithm, gui: GUI | None, done_callback):
         self.algorithm = algorithm
         self.gui = gui
         self.thread = threading.Thread(target=self.runner)
@@ -75,8 +75,12 @@ class AlgorithmRunner:
 
 class App:
     ALGORITHM_CLASSES = {
-        "Ant System": AntSystem,  # Default
-        "Ant Colony": AntColony,
+        "Ant System": alg.AntSystem,  # Default
+        "Ant Density": alg.AntDensity,
+        "Ant Quantity": alg.AntQuantity,
+        "Ant Colony": alg.AntColony,
+        "Elitist Strategy": alg.ElitistStrategy,
+        "Min-Max Ant System": alg.MinMaxAntSystem,
     }
 
     TEMRINAL_LOG_FORMAT_STR = "%(levelname)s: %(message)s"
@@ -91,7 +95,7 @@ class App:
         self.data_filepath = data_filepath
 
         self.data: list | None = None
-        self.algorithm: AntAlgorithm | None = None
+        self.algorithm: alg.AntAlgorithm | None = None
         self.algorithm_runner: AlgorithmRunner | None = None
         self.algorithm_class = None
         self.run_jobid = None
@@ -413,7 +417,7 @@ class App:
             logging.info(stored_params_str)
 
         self.algorithm = self.algorithm_class(
-            AntAlgorithm.tuples_to_places(self.data),
+            alg.AntAlgorithm.tuples_to_places(self.data),
             iterations=self.total_iterations,
             **self.current_params,
         )
