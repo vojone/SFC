@@ -10,20 +10,40 @@ from datetime import datetime
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk, FigureCanvasTkAgg
 
 
+def positive_integer(x : str):
+    try:
+        if int(x) <= 0:
+            raise ValueError("lower than zero")
+    except ValueError:
+        raise Exception(f"expected integer greater than zero, got {x}")
+
+def valid_float(x : str):
+    try:
+        float(x)
+    except ValueError:
+        raise Exception(f"expected float, got {x}")
+
+def mfloat_between_one_and_zero(x):
+    try:
+        if float(x) < 0 or float(x) > 1.0:
+            raise ValueError("outside the interval")
+    except ValueError:
+        raise Exception(f"expected float between 0.0 and 1.0, got {x}")
+
 class GUI:
     ALGORIHTM_PARAMS = {
         "Ant System": {
-            "ant_amount": (20, "Number Of Ants", tkinter.IntVar),
-            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar),
-            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar),
-            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar),
+            "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
+            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
+            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
+            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, mfloat_between_one_and_zero),
         },
         "Ant Colony": {
-            "ant_amount": (20, "Number Of Ants", tkinter.IntVar),
-            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar),
-            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar),
-            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar),
-            "exploitation_coef": (0.3, "Exploitation threshold ", tkinter.DoubleVar),
+            "ant_amount": (20, "Number Of Ants", tkinter.DoubleVar, positive_integer),
+            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
+            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
+            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, mfloat_between_one_and_zero),
+            "exploitation_coef": (0.3, "Exploitation threshold ", tkinter.DoubleVar, mfloat_between_one_and_zero),
         },
     }
 
@@ -85,7 +105,7 @@ class GUI:
         self.button_restore = tkinter.Button(master=self.root, text="Restore")
         self.button_restore.pack(side=tkinter.BOTTOM)
 
-        self.button_run = tkinter.Button(master=self.root, text="Run")
+        self.button_run = tkinter.ttk.Button(master=self.root, text="Run")
         self.button_run.pack(side=tkinter.BOTTOM)
 
         self.button_stop = tkinter.Button(master=self.root, text="Stop")
@@ -401,7 +421,7 @@ class GUI:
 
         self.param_dict.clear()
         for param_name in new_params:
-            default, label_text, var_type = new_params[param_name]
+            default, label_text, var_type, validator = new_params[param_name]
             var_param_entry = var_type(master=self.param_frame, value=default)
 
             label_param_entry = tkinter.Label(master=self.param_frame, text=label_text)
@@ -414,17 +434,33 @@ class GUI:
 
             var_param_entry.trace_add(
                 "write",
-                lambda *args, entry_widget=param_entry, **kwargs: self.param_changed(
-                    entry_widget
+                lambda *args, param_name=param_name, **kwargs: self.param_changed(
+                    param_name
                 ),
             )
 
-            self.param_dict[param_name] = (var_param_entry, param_entry)
+            self.param_dict[param_name] = (var_param_entry, param_entry, validator)
 
-    def param_changed(self, param_entry: tkinter.Entry):
-        param_entry.configure(background="#dddddd")
+    def param_changed(self, param_name: str):
+        try:
+            new_val = self.param_dict[param_name][1].get()
+            self.param_dict[param_name][2](new_val)
+        except Exception:
+            self.param_dict[param_name][1].configure(background="#ffdddd")
+        else:
+            self.param_dict[param_name][1].configure(background="#dddddd")
         self.button_save["state"] = "normal"
         self.button_restore["state"] = "normal"
+
+    def param_validate(self):
+        for name in self.param_dict:
+            try:
+                self.param_dict[name][2](self.param_dict[name][1].get())
+            except Exception as e:
+                logging.error(f"{e}")
+                return False
+
+        return True
 
     def param_stored(self):
         for param_name in self.param_dict:

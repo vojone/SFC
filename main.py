@@ -170,7 +170,8 @@ class App:
         fp = open(filename, mode="r")
         params_dict = json.load(fp)
         self.load_params(params_dict)
-        self.save_params()
+        if self.save_params():
+            self.reset(reseed=("seed" not in params_dict))
 
     def load_params(self, params_dict : dict):
         if "algorithm" not in params_dict:
@@ -201,14 +202,14 @@ class App:
                 if param_name not in self.current_params:
                     raise Exception(f"unrecognized param '{param_name}'")
 
-        self.reset(reseed=("seed" not in params_dict))
-
     def _use_seed(self):
         self.seed = self.gui.var_seed.get()
         self.reset(reseed=False)
 
     def _save(self):
-        self.save_params()
+        if not self.save_params():
+            return
+
         self.reset()
         logging.info("Changes of params succesfully saved")
         self.gui.button_save["state"] = "disabled"
@@ -371,15 +372,20 @@ class App:
             self.gui.button_run["state"] = "normal"
             self.gui.redraw_canvas(self.to_draw)
 
-    def save_params(self):
+    def save_params(self) -> bool:
         if not self.has_gui:
-            return
+            return True
+
+        if not self.gui.param_validate():
+            return False
 
         self.total_iterations = self.gui.var_total_iterations.get()
         self.current_params.clear()
         for p in self.gui.param_dict:
             self.current_params[p] = self.gui.param_dict[p][0].get()
         self.gui.param_stored()
+
+        return True
 
     def restore_params(self):
         if not self.has_gui:
