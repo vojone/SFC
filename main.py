@@ -360,7 +360,12 @@ class App:
         self.gui.redraw_canvas(self.to_draw)
 
     def load_data(self):
-        fp = open(self.data_filepath, "r")
+        try:
+            fp = open(self.data_filepath, "r")
+        except FileNotFoundError as e:
+            logging.error(f"Error while opening data file: {e}")
+            return
+
         self.data = json.load(fp)
         self.to_draw["data"] = self.draw_data
 
