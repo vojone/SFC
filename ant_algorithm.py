@@ -343,5 +343,4 @@ class MinMaxAntSystem(AntAlgorithm):
         self.map.vaporize_pheromone()
         self.map.add_pheromone(pheronomone_update_matrix)
         self.map.pheromone_m = self.map.pheromone_m.clip(self.min_pheromone, self.max_pheromone)
-        print(self.map.pheromone_m)
         return True
