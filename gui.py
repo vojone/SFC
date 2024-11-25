@@ -85,79 +85,128 @@ class GUI:
         self.root = tkinter.Tk()
         self.root.wm_title("ACO")
 
-        self.var_opened_file = tkinter.StringVar(master=self.root, value="")
-        self.opened_file_label = tkinter.Label(
-            master=self.root, textvariable=self.var_opened_file
-        )
-        self.opened_file_label.pack(side=tkinter.TOP)
 
-        self.button_open_file = tkinter.Button(master=self.root, text="Open file")
-        self.button_open_file.pack(side=tkinter.TOP)
+        mock_frame__ = tkinter.Frame(self.root, background="blue")
+        mock_frame__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+        mock_frame__.columnconfigure(2, weight=2)
 
         self.var_algorithm = tkinter.StringVar()
+        algorithm_label = tkinter.ttk.Label(master=mock_frame__, text="Algorithm:")
+        algorithm_label.grid(row=0, column=0, padx=(10, 5), pady=(10, 0))
         self.combobox_algorithm = tkinter.ttk.Combobox(
-            master=self.root, state="readonly", textvariable=self.var_algorithm
+            master=mock_frame__, state="readonly", textvariable=self.var_algorithm
         )
-        self.combobox_algorithm.pack(side=tkinter.TOP)
+        self.combobox_algorithm.grid(row=0, column=1, pady=(10, 0))
+
+        self.var_opened_file = tkinter.StringVar(master=mock_frame__, value="")
+        self.opened_file_label = tkinter.ttk.Label(
+            master=mock_frame__, textvariable=self.var_opened_file
+        )
+        self.opened_file_label.grid(row=0, column=4, padx=(0, 5), pady=(10, 0))
+
+        self.button_open_file = tkinter.ttk.Button(master=mock_frame__, text="Open file")
+        #self.button_open_file.pack(side=tkinter.TOP)
+        self.button_open_file.grid(row=0, column=5, padx=(0, 10), pady=(10, 0))
+
+        mock_frame2__ = tkinter.Frame(self.root, background="red")
+        mock_frame2__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+        mock_frame2__.columnconfigure(2, weight=1)
+        self.var_pheronomone = tkinter.IntVar(master=mock_frame2__, value=0)
+
+        self.var_best_path = tkinter.IntVar(master=mock_frame2__, value=1)
+        self.checkbox_best_path = self.create_checkbox(
+            mock_frame2__, "Show best path", self.var_best_path
+        )
+        self.checkbox_best_path.grid(row=0, column=0, padx=(10, 10), pady=(10, 0))
+
+        self.var_pheronomone = tkinter.IntVar(master=mock_frame2__, value=0)
+        self.checkbox_pheromone = self.create_checkbox(
+            mock_frame2__, "Show pheromone", self.var_pheronomone
+        )
+        self.checkbox_pheromone.grid(row=0, column=1, padx=(0, 10), pady=(10, 0))
+
+        mock_frame3__ = tkinter.Frame(self.root, background="green")
+        mock_frame3__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
 
         fig = plt.figure(figsize=(5, 5), dpi=100)
         self.graph_axis = fig.add_subplot()
 
-        self.var_iterations = tkinter.IntVar(master=self.root, value=0)
-        self.label_iterations = tkinter.Label(
-            master=self.root, textvariable=self.var_iterations
-        )
-        self.label_iterations.pack(side=tkinter.TOP)
-
-        self.var_total_iterations = tkinter.IntVar(master=self.root, value=100)
-        self.label_total_iterations = tkinter.Label(
-            master=self.root, text="Total iterations"
-        )
-        self.label_total_iterations.pack(side=tkinter.TOP)
-        self.entry_total_iterations = tkinter.Entry(
-            master=self.root, textvariable=self.var_total_iterations
-        )
-        self.entry_total_iterations.pack(side=tkinter.TOP)
-
-        self.canvas = FigureCanvasTkAgg(fig, master=self.root)
+        self.canvas = FigureCanvasTkAgg(fig, master=mock_frame3__)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(
             side=tkinter.TOP, fill=tkinter.BOTH, expand=True
         )
 
-        self.button_save = tkinter.Button(master=self.root, text="Save changes")
-        self.button_save.pack(side=tkinter.BOTTOM)
+        self.canvas_toolbar = NavigationToolbar2Tk(
+            self.canvas, mock_frame3__, pack_toolbar=False
+        )
+        self.canvas_toolbar.update()
+        self.canvas_toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X, padx=(10, 0))
 
-        self.button_restore = tkinter.Button(master=self.root, text="Restore")
-        self.button_restore.pack(side=tkinter.BOTTOM)
+        mock_frame4__ = tkinter.Frame(self.root, background="blue")
+        mock_frame4__.columnconfigure(1, weight=1)
+        mock_frame4__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
 
-        self.button_run = tkinter.ttk.Button(master=self.root, text="Run")
-        self.button_run.pack(side=tkinter.BOTTOM)
+        self.var_iterations = tkinter.IntVar(master=mock_frame4__, value=0)
+        self.label_iterations = tkinter.ttk.Label(
+            master=mock_frame4__, textvariable=self.var_iterations
+        )
+        self.label_iterations.grid(row=0, column=0, padx=(10, 10))
 
-        self.button_stop = tkinter.Button(master=self.root, text="Stop")
-        self.button_stop.pack(side=tkinter.BOTTOM)
 
-        self.button_step = tkinter.Button(master=self.root, text="Step")
-        self.button_step.pack(side=tkinter.BOTTOM)
+        mock_frame6__ = tkinter.Frame(self.root, background="blue")
+        mock_frame6__.columnconfigure(3, weight=1)
+        mock_frame6__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
 
-        self.button_reset = tkinter.Button(master=self.root, text="Reset")
-        self.button_reset.pack(side=tkinter.BOTTOM)
+        self.button_stop = tkinter.ttk.Button(master=mock_frame6__, text="Stop")
+        self.button_stop.grid(row=0, column=0, padx=(10, 10), pady=(10, 10))
 
-        self.param_frame = tkinter.Frame(master=self.root)
-        self.param_frame.pack(side=tkinter.BOTTOM)
+        self.button_step = tkinter.ttk.Button(master=mock_frame6__, text="Step")
+        self.button_step.grid(row=0, column=1, padx=(0, 10), pady=(10, 10))
+
+        self.button_run = tkinter.ttk.Button(master=mock_frame6__, text="Run")
+        self.button_run.grid(row=0, column=2, padx=(0, 10), pady=(10, 10))
+
+
+        self.button_reset = tkinter.ttk.Button(master=mock_frame6__, text="Reset")
+        self.button_reset.grid(row=0, column=4, padx=(10, 10), pady=(10, 10))
+
+        param_frame_label = tkinter.ttk.Label(master=self.root, text="Parameters", foreground="gray")
+        mock_frame5__ = tkinter.ttk.Labelframe(self.root, labelwidget=param_frame_label)
+        mock_frame5__.pack(side=tkinter.TOP, fill=tkinter.BOTH, padx=(10, 10), pady=(10, 0))
+
+        self.param_frame = tkinter.Frame(master=mock_frame5__)
+        self.param_frame.grid(row=1, column=0, columnspan=2)
         self.param_dict = {}
 
-        self.var_pheronomone = tkinter.IntVar(master=self.root, value=0)
-        self.checkbox_pheromone = self.create_checkbox(
-            self.root, "Show pheromone", self.var_pheronomone
+        self.var_total_iterations = tkinter.IntVar(master=mock_frame5__, value=100)
+        self.label_total_iterations = tkinter.ttk.Label(
+            master=self.param_frame, text="Total iterations", name="total_it_label", anchor="e"
         )
-        self.checkbox_pheromone.pack(side=tkinter.BOTTOM)
+        self.label_total_iterations.grid(row=0, column=0, padx=(10, 0), pady=(10, 10), sticky="W")
+        self.entry_total_iterations = tkinter.ttk.Entry(
+            master=self.param_frame, textvariable=self.var_total_iterations, name="total_it_entry"
+        )
+        self.entry_total_iterations.grid(row=0, column=1, padx=(10, 20), pady=(10, 10), sticky="W")
 
-        self.var_best_path = tkinter.IntVar(master=self.root, value=1)
-        self.checkbox_best_path = self.create_checkbox(
-            self.root, "Show best path", self.var_best_path
-        )
-        self.checkbox_best_path.pack(side=tkinter.BOTTOM)
+
+        mock_frame7__ = tkinter.Frame(self.root, background="blue")
+        mock_frame7__.columnconfigure(2, weight=1)
+        mock_frame7__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+
+        self.button_save = tkinter.ttk.Button(master=mock_frame7__, text="Save Params")
+        self.button_save.grid(row=0, column=0, padx=(10, 10), pady=(10, 10))
+
+        self.button_restore = tkinter.ttk.Button(master=mock_frame7__, text="Restore Params")
+        self.button_restore.grid(row=0, column=1, padx=(0, 10), pady=(10, 10))
+
+
+        modified_style = tkinter.ttk.Style(master=mock_frame5__)
+        modified_style.configure("modified_style.TEntry", foreground="#0000ff")
+        error_style = tkinter.ttk.Style(master=mock_frame5__)
+        error_style.configure("error_style.TEntry", foreground="#ff0000")
+        normal_style = tkinter.ttk.Style(master=mock_frame5__)
+        normal_style.configure("normal_style.TEntry", foreground="#000000")
 
         self.var_seed = tkinter.IntVar(master=self.root, value=0)
         self.entry_seed = None
@@ -196,12 +245,6 @@ class GUI:
 
         self.toolbar.add_command(label="Settings", command=self.open_setings_menu)
         self.toolbar.add_command(label="Log", command=self.open_log_window)
-
-        self.canvas_toolbar = NavigationToolbar2Tk(
-            self.canvas, self.root, pack_toolbar=False
-        )
-        self.canvas_toolbar.update()
-        self.canvas_toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X)
 
         self.logging_widget = None
         self.log = []
@@ -322,7 +365,7 @@ class GUI:
         checkbox_pheromone_amount.pack(side=tkinter.BOTTOM)
 
     def create_checkbox(self, root, label, variable) -> tkinter.Checkbutton:
-        return tkinter.Checkbutton(
+        return tkinter.ttk.Checkbutton(
             master=root,
             text=label,
             variable=variable,
@@ -452,20 +495,25 @@ class GUI:
 
     def update_params(self, new_params: dict):
         for c in self.param_frame.winfo_children():
+            if c.winfo_name() in ["total_it_label", "total_it_entry"]:
+                continue
             c.destroy()
 
         self.param_dict.clear()
-        for param_name in new_params:
+        for i, param_name in enumerate(new_params):
             default, label_text, var_type, validator = new_params[param_name]
             var_param_entry = var_type(master=self.param_frame, value=default)
 
-            label_param_entry = tkinter.Label(master=self.param_frame, text=label_text)
-            label_param_entry.pack(side=tkinter.TOP)
+            label_param_entry = tkinter.ttk.Label(master=self.param_frame, text=label_text, anchor="e")
+            label_param_entry.grid(row=i + 1, column=0, padx=(10, 10), pady=(0, 10), sticky="W")
 
-            param_entry = tkinter.Entry(
-                name=param_name, master=self.param_frame, textvariable=var_param_entry
+            entry_frame = tkinter.Frame(master=self.param_frame, name=f"{param_name}_frame")
+            entry_frame.configure(background="")
+            param_entry = tkinter.ttk.Entry(
+                name=param_name, master=entry_frame, textvariable=var_param_entry
             )
-            param_entry.pack(side=tkinter.TOP)
+            param_entry.pack(side=tkinter.TOP, padx=(1, 1), pady=(1, 1))
+            entry_frame.grid(row=i + 1, column=1, padx=(0, 10), pady=(0, 10))
 
             var_param_entry.trace_add(
                 "write",
@@ -481,9 +529,9 @@ class GUI:
             new_val = self.param_dict[param_name][1].get()
             self.param_dict[param_name][2](new_val)
         except Exception:
-            self.param_dict[param_name][1].configure(background="#ffdddd")
+            self.param_dict[param_name][1].configure(style="error_style.TEntry")
         else:
-            self.param_dict[param_name][1].configure(background="#dddddd")
+            self.param_dict[param_name][1].configure(style="modified_style.TEntry")
         self.button_save["state"] = "normal"
         self.button_restore["state"] = "normal"
 
@@ -499,7 +547,7 @@ class GUI:
 
     def param_stored(self):
         for param_name in self.param_dict:
-            self.param_dict[param_name][1].configure(background="#ffffff")
+            self.param_dict[param_name][1].configure(style="normal_style.TEntry")
 
         self.button_save["state"] = "disabled"
         self.button_restore["state"] = "disabled"
