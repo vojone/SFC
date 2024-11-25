@@ -151,7 +151,8 @@ class GUI:
         mock_frame4__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
 
         self.var_iterations = tkinter.IntVar(master=mock_frame4__, value=0)
-        label_iterations_annotation = tkinter.ttk.Label(master=mock_frame4__, text="Iteration:")
+        self.var_total_iterations_stored = tkinter.IntVar(master=mock_frame4__, value=0)
+        label_iterations_annotation = tkinter.ttk.Label(master=mock_frame4__, text="It.:")
         label_iterations_annotation.grid(row=0, column=0, padx=(10, 5))
         self.label_iterations = tkinter.ttk.Label(
             master=mock_frame4__, textvariable=self.var_iterations
@@ -159,6 +160,9 @@ class GUI:
         self.label_iterations.grid(row=0, column=1)
         label_iterations_annotation_sep = tkinter.ttk.Label(master=mock_frame4__, text="/")
         label_iterations_annotation_sep.grid(row=0, column=2)
+
+        label_iterations_annotation_total = tkinter.ttk.Label(master=mock_frame4__, textvariable=self.var_total_iterations_stored)
+        label_iterations_annotation_total.grid(row=0, column=3)
 
 
         self.speed = tkinter.DoubleVar(master=mock_frame4__, value=0)
@@ -202,10 +206,6 @@ class GUI:
             master=self.param_frame, textvariable=self.var_total_iterations, name="total_it_entry"
         )
         self.entry_total_iterations.grid(row=0, column=1, padx=(10, 20), pady=(10, 10), sticky="W")
-
-        label_iterations_annotation_total = tkinter.ttk.Label(master=mock_frame4__, textvariable=self.var_total_iterations)
-        label_iterations_annotation_total.grid(row=0, column=3)
-
 
         mock_frame7__ = tkinter.Frame(self.root, background="blue")
         mock_frame7__.columnconfigure(2, weight=1)

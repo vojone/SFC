@@ -394,6 +394,7 @@ class App:
             return False
 
         self.total_iterations = self.gui.var_total_iterations.get()
+        self.gui.var_total_iterations_stored.set(self.total_iterations)
         self.current_params.clear()
         for p in self.gui.param_dict:
             self.current_params[p] = self.gui.param_dict[p][0].get()
