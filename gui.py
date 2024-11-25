@@ -81,6 +81,9 @@ class GUI:
         "verticalalignment": "center",
     }
 
+    SPEED_PRECISION = 4
+    ITERATION_PER_SPEED_UPDATE = 10
+
     def __init__(self, logger=None):
         self.root = tkinter.Tk()
         self.root.wm_title("ACO")
@@ -144,15 +147,26 @@ class GUI:
         self.canvas_toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X, padx=(10, 0))
 
         mock_frame4__ = tkinter.Frame(self.root, background="blue")
-        mock_frame4__.columnconfigure(1, weight=1)
+        mock_frame4__.columnconfigure(4, weight=1)
         mock_frame4__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
 
         self.var_iterations = tkinter.IntVar(master=mock_frame4__, value=0)
+        label_iterations_annotation = tkinter.ttk.Label(master=mock_frame4__, text="Iteration:")
+        label_iterations_annotation.grid(row=0, column=0, padx=(10, 5))
         self.label_iterations = tkinter.ttk.Label(
             master=mock_frame4__, textvariable=self.var_iterations
         )
-        self.label_iterations.grid(row=0, column=0, padx=(10, 10))
+        self.label_iterations.grid(row=0, column=1)
+        label_iterations_annotation_sep = tkinter.ttk.Label(master=mock_frame4__, text="/")
+        label_iterations_annotation_sep.grid(row=0, column=2)
 
+
+        self.speed = tkinter.DoubleVar(master=mock_frame4__, value=0)
+        self.speed_label = tkinter.ttk.Label(master=mock_frame4__, text="--")
+        self.speed_label.grid(row=0, column=5, padx=(10, 0))
+
+        speed_label_annot = tkinter.ttk.Label(master=mock_frame4__, text="s/it")
+        speed_label_annot.grid(row=0, column=6, padx=(0, 10))
 
         mock_frame6__ = tkinter.Frame(self.root, background="blue")
         mock_frame6__.columnconfigure(3, weight=1)
@@ -189,6 +203,9 @@ class GUI:
         )
         self.entry_total_iterations.grid(row=0, column=1, padx=(10, 20), pady=(10, 10), sticky="W")
 
+        label_iterations_annotation_total = tkinter.ttk.Label(master=mock_frame4__, textvariable=self.var_total_iterations)
+        label_iterations_annotation_total.grid(row=0, column=3)
+
 
         mock_frame7__ = tkinter.Frame(self.root, background="blue")
         mock_frame7__.columnconfigure(2, weight=1)
@@ -202,7 +219,7 @@ class GUI:
 
 
         modified_style = tkinter.ttk.Style(master=mock_frame5__)
-        modified_style.configure("modified_style.TEntry", foreground="#0000ff")
+        modified_style.configure("modified_style.TEntry", foreground="#00dd11")
         error_style = tkinter.ttk.Style(master=mock_frame5__)
         error_style.configure("error_style.TEntry", foreground="#ff0000")
         normal_style = tkinter.ttk.Style(master=mock_frame5__)
@@ -256,6 +273,21 @@ class GUI:
     def quit(self):
         if self.on_quit:
             self.on_quit()
+
+    def disable_speed_label(self):
+        self.speed_label.configure(textvariable="")
+        self.speed_label.configure(text="--")
+
+    def enable_speed_label(self):
+        self.speed_label.configure(textvariable=self.speed)
+
+    def update_speed(self, iteration : int, cumulative_time : float):
+        if iteration == 1:
+            self.enable_speed_label()
+            self.speed.set(round(cumulative_time, self.SPEED_PRECISION))
+        elif iteration > 0 and iteration % self.ITERATION_PER_SPEED_UPDATE == 0:
+            new_speed = cumulative_time / iteration # Compute average speed
+            self.speed.set(round(new_speed, self.SPEED_PRECISION))
 
     def set_quit_fn(self, quit_fn):
         self.on_quit = quit_fn
@@ -507,13 +539,10 @@ class GUI:
             label_param_entry = tkinter.ttk.Label(master=self.param_frame, text=label_text, anchor="e")
             label_param_entry.grid(row=i + 1, column=0, padx=(10, 10), pady=(0, 10), sticky="W")
 
-            entry_frame = tkinter.Frame(master=self.param_frame, name=f"{param_name}_frame")
-            entry_frame.configure(background="")
             param_entry = tkinter.ttk.Entry(
-                name=param_name, master=entry_frame, textvariable=var_param_entry
+                name=param_name, master=self.param_frame, textvariable=var_param_entry
             )
-            param_entry.pack(side=tkinter.TOP, padx=(1, 1), pady=(1, 1))
-            entry_frame.grid(row=i + 1, column=1, padx=(0, 10), pady=(0, 10))
+            param_entry.grid(row=i + 1, column=1, padx=(0, 10), pady=(0, 10))
 
             var_param_entry.trace_add(
                 "write",

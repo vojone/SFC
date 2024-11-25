@@ -7,6 +7,7 @@ import threading
 import logging
 import numpy
 import numpy.typing
+import time
 
 import ant_algorithm as alg
 from gui import GUI
@@ -26,6 +27,7 @@ class AlgorithmRunner:
         self.run_event = threading.Event()
         self.terminated_event = threading.Event()
         self.done_callback = done_callback
+        self.total_time = 0.0
 
     @property
     def is_alive(self):
@@ -60,14 +62,21 @@ class AlgorithmRunner:
             if self.terminated_event.is_set():
                 break
 
+            start_t = time.time()
             if self.run_event.is_set():
                 while self.run_event.is_set() and self.algorithm.make_step():
+                    self.total_time += time.time() - start_t
                     if self.gui is not None:
+                        self.gui.update_speed(self.algorithm.current_iteration, self.total_time)
                         self.gui.var_iterations.set(self.algorithm.current_iteration)
                         self.gui.root.update_idletasks()
+                    start_t = time.time()
             else:
                 self.algorithm.make_step()
-                self.gui.var_iterations.set(self.algorithm.current_iteration)
+                self.total_time += time.time() - start_t
+                if self.gui is not None:
+                    self.gui.update_speed(self.algorithm.current_iteration, self.total_time)
+                    self.gui.var_iterations.set(self.algorithm.current_iteration)
 
             self.done_callback(not self.algorithm.is_finished)
             self.finish_task_event.set()
@@ -363,6 +372,7 @@ class App:
             self.algorithm_runner.terminate()
         if self.has_gui:
             self.gui.clear_log()
+            self.gui.disable_speed_label()
             if reseed and self.gui.var_fixed_seed.get() == 0:
                 self.seed = get_seed()
                 self.gui.var_seed.set(self.seed)
