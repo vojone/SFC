@@ -146,6 +146,23 @@ class GUI:
         self.canvas_toolbar.update()
         self.canvas_toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X, padx=(10, 0))
 
+        mock_frame41__ = tkinter.Frame(self.root, background="blue")
+        mock_frame41__.columnconfigure(4, weight=1)
+        mock_frame41__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+
+        best_len_annotation = tkinter.ttk.Label(master=mock_frame41__, text="Best len:")
+        best_len_annotation.grid(row=0, column=0, padx=(10, 5))
+
+        self.var_best_len = tkinter.StringVar(master=mock_frame41__, value="--")
+        self.label_best_len= tkinter.ttk.Label(
+            master=mock_frame41__, textvariable=self.var_best_len
+        )
+        self.label_best_len.grid(row=0, column=1)
+
+        self.status = tkinter.StringVar(master=mock_frame41__, value="test")
+        self.label_status = tkinter.ttk.Label(master=mock_frame41__, textvariable=self.status)
+        self.label_status.grid(row=0, column=5, padx=(10, 10))
+
         mock_frame4__ = tkinter.Frame(self.root, background="blue")
         mock_frame4__.columnconfigure(4, weight=1)
         mock_frame4__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
@@ -176,18 +193,18 @@ class GUI:
         mock_frame6__.columnconfigure(3, weight=1)
         mock_frame6__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
 
-        self.button_stop = tkinter.ttk.Button(master=mock_frame6__, text="Stop")
-        self.button_stop.grid(row=0, column=0, padx=(10, 10), pady=(10, 10))
+        self.button_stop = tkinter.ttk.Button(master=mock_frame6__, text="Pause")
+        self.button_stop.grid(row=0, column=0, padx=(10, 10), pady=(5, 10))
 
         self.button_step = tkinter.ttk.Button(master=mock_frame6__, text="Step")
-        self.button_step.grid(row=0, column=1, padx=(0, 10), pady=(10, 10))
+        self.button_step.grid(row=0, column=1, padx=(0, 10), pady=(5, 10))
 
         self.button_run = tkinter.ttk.Button(master=mock_frame6__, text="Run")
-        self.button_run.grid(row=0, column=2, padx=(0, 10), pady=(10, 10))
+        self.button_run.grid(row=0, column=2, padx=(0, 10), pady=(5, 10))
 
 
         self.button_reset = tkinter.ttk.Button(master=mock_frame6__, text="Reset")
-        self.button_reset.grid(row=0, column=4, padx=(10, 10), pady=(10, 10))
+        self.button_reset.grid(row=0, column=4, padx=(10, 10), pady=(5, 10))
 
         param_frame_label = tkinter.ttk.Label(master=self.root, text="Parameters", foreground="gray")
         mock_frame5__ = tkinter.ttk.Labelframe(self.root, labelwidget=param_frame_label)
@@ -270,6 +287,18 @@ class GUI:
             logger = logging.getLogger()
             logger.addHandler(text_handler)
 
+    def set_paused_status(self):
+        self.status.set("Paused")
+        self.label_status.configure(foreground="#000000")
+
+    def set_finished_status(self):
+        self.status.set("Finished")
+        self.label_status.configure(foreground="#00aa00")
+
+    def set_running_status(self):
+        self.status.set("Running...")
+        self.label_status.configure(foreground="#dd7700")
+
     def quit(self):
         if self.on_quit:
             self.on_quit()
@@ -288,6 +317,12 @@ class GUI:
         elif iteration > 0 and iteration % self.ITERATION_PER_SPEED_UPDATE == 0:
             new_speed = cumulative_time / iteration # Compute average speed
             self.speed.set(round(new_speed, self.SPEED_PRECISION))
+
+    def update_best_path(self, new_best_path_len : float):
+        self.var_best_len.set(f"{new_best_path_len:g}")
+
+    def reset_best_path(self):
+        self.var_best_len.set("--")
 
     def set_quit_fn(self, quit_fn):
         self.on_quit = quit_fn

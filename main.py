@@ -68,6 +68,7 @@ class AlgorithmRunner:
                     self.total_time += time.time() - start_t
                     if self.gui is not None:
                         self.gui.update_speed(self.algorithm.current_iteration, self.total_time)
+                        self.gui.update_best_path(self.algorithm.best_path_len)
                         self.gui.var_iterations.set(self.algorithm.current_iteration)
                         self.gui.root.update_idletasks()
                     start_t = time.time()
@@ -76,6 +77,7 @@ class AlgorithmRunner:
                 self.total_time += time.time() - start_t
                 if self.gui is not None:
                     self.gui.update_speed(self.algorithm.current_iteration, self.total_time)
+                    self.gui.update_best_path(self.algorithm.best_path_len)
                     self.gui.var_iterations.set(self.algorithm.current_iteration)
 
             self.done_callback(not self.algorithm.is_finished)
@@ -253,11 +255,15 @@ class App:
         if self.has_gui:
             self.gui.redraw_canvas(self.to_draw)
             if not continues:
+                self.gui.button_stop["state"] = "disabled"
                 self.gui.button_step["state"] = "disabled"
                 self.gui.button_run["state"] = "disabled"
+                self.gui.set_finished_status()
             else:
+                self.gui.button_stop["state"] = "normal"
                 self.gui.button_step["state"] = "normal"
                 self.gui.button_run["state"] = "normal"
+                self.gui.set_paused_status()
 
     def _stop(self):
         self.algorithm_runner.stop()
@@ -280,6 +286,7 @@ class App:
         if self.algorithm_runner is None:
             return
 
+        self.gui.set_running_status()
         self.algorithm_runner.make_step()
         self.run_jobid = self.gui.root.after(STEP_BUTTON_RUN_MS, self._run)
 
@@ -287,6 +294,8 @@ class App:
         if self.algorithm_runner is None:
             return
 
+
+        self.gui.set_running_status()
         self.algorithm_runner.run()
         self.gui.button_run["state"] = "disabled"
 
@@ -381,7 +390,10 @@ class App:
         self.best_solution = None
         self.algorithm_init()
         if self.has_gui:
+            self.gui.set_paused_status()
+            self.gui.reset_best_path()
             self.gui.var_iterations.set(self.algorithm.current_iteration)
+            self.gui.button_stop["state"] = "normal"
             self.gui.button_step["state"] = "normal"
             self.gui.button_run["state"] = "normal"
             self.gui.redraw_canvas(self.to_draw)
