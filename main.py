@@ -138,6 +138,7 @@ class App:
             self.gui.button_open_file.configure(command=self._open_file)
             self.gui.button_run.configure(command=self._run)
             self.gui.button_stop.configure(command=self._stop)
+            self.gui.button_stop["state"] = "disabled"
             self.gui.button_save.configure(command=self._save)
             self.gui.button_restore.configure(command=self._restore)
 
@@ -254,19 +255,19 @@ class App:
 
         if self.has_gui:
             self.gui.redraw_canvas(self.to_draw)
+            self.gui.button_stop["state"] = "disabled"
             if not continues:
-                self.gui.button_stop["state"] = "disabled"
                 self.gui.button_step["state"] = "disabled"
                 self.gui.button_run["state"] = "disabled"
                 self.gui.set_finished_status()
             else:
-                self.gui.button_stop["state"] = "normal"
                 self.gui.button_step["state"] = "normal"
                 self.gui.button_run["state"] = "normal"
                 self.gui.set_paused_status()
 
     def _stop(self):
-        self.algorithm_runner.stop()
+        if self.algorithm_runner is not None:
+            self.algorithm_runner.stop()
 
     def _reset(self):
         self.reset()
@@ -297,6 +298,7 @@ class App:
 
         self.gui.set_running_status()
         self.algorithm_runner.run()
+        self.gui.button_stop["state"] = "enabled"
         self.gui.button_run["state"] = "disabled"
 
     def _open_file(self):
@@ -382,7 +384,11 @@ class App:
             self.load_data()
 
     def reset(self, reseed: bool = True):
+        if not self.data:
+            return
+
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
+            print("THIS")
             self.algorithm_runner.terminate()
         if self.has_gui:
             self.gui.clear_log()
@@ -398,7 +404,7 @@ class App:
             self.gui.set_paused_status()
             self.gui.reset_best_path()
             self.gui.var_iterations.set(self.algorithm.current_iteration)
-            self.gui.button_stop["state"] = "normal"
+            self.gui.button_stop["state"] = "disabled"
             self.gui.button_step["state"] = "normal"
             self.gui.button_run["state"] = "normal"
             self.gui.redraw_canvas(self.to_draw)
