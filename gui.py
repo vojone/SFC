@@ -89,132 +89,133 @@ class GUI:
         self.root.wm_title("ACO")
 
 
-        mock_frame__ = tkinter.Frame(self.root, background="blue")
-        mock_frame__.pack(side=tkinter.TOP, fill=tkinter.X)
-        mock_frame__.columnconfigure(2, weight=2)
+        frame_algorithm_data_file = tkinter.Frame(self.root)
+        frame_algorithm_data_file.pack(side=tkinter.TOP, fill=tkinter.X)
+        frame_algorithm_data_file.columnconfigure(2, weight=1)
 
         self.var_algorithm = tkinter.StringVar()
-        algorithm_label = tkinter.ttk.Label(master=mock_frame__, text="Algorithm:")
+        algorithm_label = tkinter.ttk.Label(master=frame_algorithm_data_file, text="Algorithm:")
         algorithm_label.grid(row=0, column=0, padx=(10, 5), pady=(10, 0))
         self.combobox_algorithm = tkinter.ttk.Combobox(
-            master=mock_frame__, state="readonly", textvariable=self.var_algorithm
+            master=frame_algorithm_data_file, state="readonly", textvariable=self.var_algorithm
         )
         self.combobox_algorithm.grid(row=0, column=1, pady=(10, 0))
 
-        self.var_opened_file = tkinter.StringVar(master=mock_frame__, value="")
+        self.var_opened_file = tkinter.StringVar(master=frame_algorithm_data_file, value="")
         self.opened_file_label = tkinter.ttk.Label(
-            master=mock_frame__, textvariable=self.var_opened_file
+            master=frame_algorithm_data_file, textvariable=self.var_opened_file
         )
         self.opened_file_label.grid(row=0, column=4, padx=(0, 5), pady=(10, 0))
 
-        self.button_open_file = tkinter.ttk.Button(master=mock_frame__, text="Open file")
-        #self.button_open_file.pack(side=tkinter.TOP)
+        self.button_open_file = tkinter.ttk.Button(master=frame_algorithm_data_file, text="Open file")
         self.button_open_file.grid(row=0, column=5, padx=(0, 10), pady=(10, 0))
 
-        mock_frame2__ = tkinter.Frame(self.root, background="red")
-        mock_frame2__.pack(side=tkinter.TOP, fill=tkinter.X)
-        mock_frame2__.columnconfigure(2, weight=1)
-        self.var_pheronomone = tkinter.IntVar(master=mock_frame2__, value=0)
+        frame_display_options = tkinter.Frame(self.root)
+        frame_display_options.pack(side=tkinter.TOP, fill=tkinter.X)
+        frame_display_options.columnconfigure(2, weight=1)
+        self.var_pheronomone = tkinter.IntVar(master=frame_display_options, value=0)
 
-        self.var_best_path = tkinter.IntVar(master=mock_frame2__, value=1)
+        self.var_best_path = tkinter.IntVar(master=frame_display_options, value=1)
         self.checkbox_best_path = self.create_checkbox(
-            mock_frame2__, "Show best path", self.var_best_path
+            frame_display_options, "Show best path", self.var_best_path
         )
         self.checkbox_best_path.grid(row=0, column=0, padx=(10, 10), pady=(10, 0))
 
-        self.var_pheronomone = tkinter.IntVar(master=mock_frame2__, value=0)
+        self.var_pheronomone = tkinter.IntVar(master=frame_display_options, value=0)
         self.checkbox_pheromone = self.create_checkbox(
-            mock_frame2__, "Show pheromone", self.var_pheronomone
+            frame_display_options, "Show pheromone", self.var_pheronomone
         )
         self.checkbox_pheromone.grid(row=0, column=1, padx=(0, 10), pady=(10, 0))
 
-        mock_frame3__ = tkinter.Frame(self.root, background="green")
-        mock_frame3__.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+        frame_chart = tkinter.Frame(self.root)
+        frame_chart.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
         fig = plt.figure(figsize=(5, 5), dpi=100)
         self.graph_axis = fig.add_subplot()
 
-        self.canvas = FigureCanvasTkAgg(fig, master=mock_frame3__)
+        self.canvas = FigureCanvasTkAgg(fig, master=frame_chart)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(
             side=tkinter.TOP, fill=tkinter.BOTH, expand=True
         )
 
         self.canvas_toolbar = NavigationToolbar2Tk(
-            self.canvas, mock_frame3__, pack_toolbar=False
+            self.canvas, frame_chart, pack_toolbar=False
         )
         self.canvas_toolbar.update()
         self.canvas_toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X, padx=(10, 0))
 
-        mock_frame41__ = tkinter.Frame(self.root, background="blue")
-        mock_frame41__.columnconfigure(4, weight=1)
-        mock_frame41__.pack(side=tkinter.TOP, fill=tkinter.X)
+        frame_runinfo = tkinter.Frame(self.root)
+        frame_runinfo.columnconfigure(4, weight=1)
+        frame_runinfo.pack(side=tkinter.TOP, fill=tkinter.X)
 
-        best_len_annotation = tkinter.ttk.Label(master=mock_frame41__, text="Best len:")
+        best_len_annotation = tkinter.ttk.Label(master=frame_runinfo, text="Best len:")
         best_len_annotation.grid(row=0, column=0, padx=(10, 5))
 
-        self.var_best_len = tkinter.StringVar(master=mock_frame41__, value="--")
+        self.var_best_len = tkinter.StringVar(master=frame_runinfo, value="--")
         self.label_best_len= tkinter.ttk.Label(
-            master=mock_frame41__, textvariable=self.var_best_len
+            master=frame_runinfo, textvariable=self.var_best_len
         )
         self.label_best_len.grid(row=0, column=1)
 
-        self.status = tkinter.StringVar(master=mock_frame41__, value="test")
-        self.label_status = tkinter.ttk.Label(master=mock_frame41__, textvariable=self.status)
+        self.status = tkinter.StringVar(master=frame_runinfo, value="")
+        self.label_status = tkinter.ttk.Label(master=frame_runinfo, textvariable=self.status)
         self.label_status.grid(row=0, column=5, padx=(10, 10))
 
-        mock_frame4__ = tkinter.Frame(self.root, background="blue")
-        mock_frame4__.columnconfigure(4, weight=1)
-        mock_frame4__.pack(side=tkinter.TOP, fill=tkinter.X)
+        frame_runstats = tkinter.Frame(self.root)
+        frame_runstats.columnconfigure(4, weight=1)
+        frame_runstats.pack(side=tkinter.TOP, fill=tkinter.X)
 
-        self.var_iterations = tkinter.IntVar(master=mock_frame4__, value=0)
-        self.var_total_iterations_stored = tkinter.IntVar(master=mock_frame4__, value=0)
-        label_iterations_annotation = tkinter.ttk.Label(master=mock_frame4__, text="It.:")
+        self.var_iterations = tkinter.IntVar(master=frame_runstats, value=0)
+        self.var_total_iterations_stored = tkinter.IntVar(master=frame_runstats, value=0)
+        label_iterations_annotation = tkinter.ttk.Label(master=frame_runstats, text="It.:")
         label_iterations_annotation.grid(row=0, column=0, padx=(10, 5))
         self.label_iterations = tkinter.ttk.Label(
-            master=mock_frame4__, textvariable=self.var_iterations
+            master=frame_runstats, textvariable=self.var_iterations
         )
         self.label_iterations.grid(row=0, column=1)
-        label_iterations_annotation_sep = tkinter.ttk.Label(master=mock_frame4__, text="/")
+        label_iterations_annotation_sep = tkinter.ttk.Label(master=frame_runstats, text="/")
         label_iterations_annotation_sep.grid(row=0, column=2)
 
-        label_iterations_annotation_total = tkinter.ttk.Label(master=mock_frame4__, textvariable=self.var_total_iterations_stored)
+        label_iterations_annotation_total = tkinter.ttk.Label(master=frame_runstats, textvariable=self.var_total_iterations_stored)
         label_iterations_annotation_total.grid(row=0, column=3)
 
 
-        self.speed = tkinter.DoubleVar(master=mock_frame4__, value=0)
-        self.speed_label = tkinter.ttk.Label(master=mock_frame4__, text="--")
+        self.speed = tkinter.DoubleVar(master=frame_runstats, value=0)
+        self.speed_label = tkinter.ttk.Label(master=frame_runstats, text="--")
         self.speed_label.grid(row=0, column=5, padx=(10, 0))
 
-        speed_label_annot = tkinter.ttk.Label(master=mock_frame4__, text="s/it")
+        speed_label_annot = tkinter.ttk.Label(master=frame_runstats, text="s/it")
         speed_label_annot.grid(row=0, column=6, padx=(0, 10))
 
-        mock_frame6__ = tkinter.Frame(self.root, background="blue")
-        mock_frame6__.columnconfigure(3, weight=1)
-        mock_frame6__.pack(side=tkinter.TOP, fill=tkinter.X)
+        frame_controls = tkinter.Frame(self.root)
+        frame_controls.columnconfigure(3, weight=1)
+        frame_controls.pack(side=tkinter.TOP, fill=tkinter.X)
 
-        self.button_stop = tkinter.ttk.Button(master=mock_frame6__, text="Pause")
+        self.button_stop = tkinter.ttk.Button(master=frame_controls, text="Pause")
         self.button_stop.grid(row=0, column=0, padx=(10, 10), pady=(5, 10))
 
-        self.button_step = tkinter.ttk.Button(master=mock_frame6__, text="Step")
+        self.button_step = tkinter.ttk.Button(master=frame_controls, text="Step")
         self.button_step.grid(row=0, column=1, padx=(0, 10), pady=(5, 10))
 
-        self.button_run = tkinter.ttk.Button(master=mock_frame6__, text="Run")
+        self.button_run = tkinter.ttk.Button(master=frame_controls, text="Run")
         self.button_run.grid(row=0, column=2, padx=(0, 10), pady=(5, 10))
 
 
-        self.button_reset = tkinter.ttk.Button(master=mock_frame6__, text="Reset")
+        self.button_reset = tkinter.ttk.Button(master=frame_controls, text="Reset")
         self.button_reset.grid(row=0, column=4, padx=(10, 10), pady=(5, 10))
 
         param_frame_label = tkinter.ttk.Label(master=self.root, text="Parameters", foreground="gray")
-        mock_frame5__ = tkinter.ttk.Labelframe(self.root, labelwidget=param_frame_label)
-        mock_frame5__.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(10, 0))
 
-        self.param_frame = tkinter.Frame(master=mock_frame5__)
+
+        label_frame_params = tkinter.ttk.Labelframe(self.root, labelwidget=param_frame_label)
+        label_frame_params.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(10, 0))
+
+        self.param_frame = tkinter.Frame(master=label_frame_params)
         self.param_frame.grid(row=1, column=0, columnspan=2)
         self.param_dict = {}
 
-        self.var_total_iterations = tkinter.IntVar(master=mock_frame5__, value=100)
+        self.var_total_iterations = tkinter.IntVar(master=label_frame_params, value=100)
         self.label_total_iterations = tkinter.ttk.Label(
             master=self.param_frame, text="Total iterations", name="total_it_label", anchor="e"
         )
@@ -224,22 +225,22 @@ class GUI:
         )
         self.entry_total_iterations.grid(row=0, column=1, padx=(10, 20), pady=(10, 10), sticky="W")
 
-        mock_frame7__ = tkinter.Frame(self.root, background="blue")
-        mock_frame7__.columnconfigure(2, weight=1)
-        mock_frame7__.pack(side=tkinter.TOP, fill=tkinter.X)
+        frame_param_controls = tkinter.Frame(self.root)
+        frame_param_controls.columnconfigure(2, weight=1)
+        frame_param_controls.pack(side=tkinter.TOP, fill=tkinter.X)
 
-        self.button_save = tkinter.ttk.Button(master=mock_frame7__, text="Save Params")
+        self.button_save = tkinter.ttk.Button(master=frame_param_controls, text="Save Params")
         self.button_save.grid(row=0, column=0, padx=(10, 10), pady=(10, 10))
 
-        self.button_restore = tkinter.ttk.Button(master=mock_frame7__, text="Restore Params")
+        self.button_restore = tkinter.ttk.Button(master=frame_param_controls, text="Restore Params")
         self.button_restore.grid(row=0, column=1, padx=(0, 10), pady=(10, 10))
 
 
-        modified_style = tkinter.ttk.Style(master=mock_frame5__)
+        modified_style = tkinter.ttk.Style(master=label_frame_params)
         modified_style.configure("modified_style.TEntry", foreground="#00dd11")
-        error_style = tkinter.ttk.Style(master=mock_frame5__)
+        error_style = tkinter.ttk.Style(master=label_frame_params)
         error_style.configure("error_style.TEntry", foreground="#ff0000")
-        normal_style = tkinter.ttk.Style(master=mock_frame5__)
+        normal_style = tkinter.ttk.Style(master=label_frame_params)
         normal_style.configure("normal_style.TEntry", foreground="#000000")
 
         self.var_seed = tkinter.IntVar(master=self.root, value=0)

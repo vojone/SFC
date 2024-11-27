@@ -393,7 +393,6 @@ class App:
             return
 
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
-            print("THIS")
             self.algorithm_runner.terminate()
         if self.has_gui:
             self.gui.clear_log()
