@@ -164,8 +164,8 @@ class App:
             self.gui.checkbox_pheromone_amount_on_change = self._toggle_pheromone
             self.gui.use_custom_seed = self._use_seed
 
-            self.gui.save_params_cb = self._save_params_to_file
-            self.gui.save_params_with_seed_cb = self._save_params_with_seed_to_file
+            self.gui.on_save_params = self._save_params_to_file
+            self.gui.on_save_params_with_seed = self._save_params_with_seed_to_file
             self.gui.load_params_cb = self._load_params
 
             self._toggle_best_path()
@@ -183,7 +183,7 @@ class App:
             self.gui.root.destroy()
 
     def _load_params(self):
-        filename = self.gui.open_params_file()
+        filename = self.gui.open_window_params_file()
         if not filename:
             return
 
@@ -301,7 +301,7 @@ class App:
         self.gui.button_run["state"] = "disabled"
 
     def _open_file(self):
-        self.data_filepath = self.gui.open_data_file()
+        self.data_filepath = self.gui.open_window_data_file()
         if self.data_filepath is None or self.data_filepath == "":
             return
 
@@ -329,7 +329,7 @@ class App:
             self.remove_to_draw("place_names")
 
     def _save_params_to_file(self):
-        filename = self.gui.open_save_params()
+        filename = self.gui.open_window_save_params()
         if not filename:
             return
 
@@ -339,7 +339,7 @@ class App:
         fp.close()
 
     def _save_params_with_seed_to_file(self):
-        filename = self.gui.open_save_params(custom_str="-seed")
+        filename = self.gui.open_window_save_params(custom_str="-seed")
         if not filename:
             return
 

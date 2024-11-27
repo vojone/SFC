@@ -32,7 +32,7 @@ def float_between_one_and_zero(x):
 
 class GUI:
     ANT_ALGORITHM_COMMON_PARAMS = {
-         "iterations": (100, "Iterations", tkinter.IntVar, positive_integer),
+        "iterations": (100, "Iterations", tkinter.IntVar, positive_integer),
         "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
         "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
         "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
@@ -75,12 +75,50 @@ class GUI:
     SPEED_PRECISION = 4
     ITERATION_PER_SPEED_UPDATE = 10
 
+    MODIFIED_PARAM_COLOR = "#00dd11"
+    ERROR_PARAM_COLOR = "#ff0000"
+    NORMAL_PARAM_COLOR = "#000000"
+
+    MAX_PARAM_IN_COLUMN = 5
+
     def __init__(self, logger=None):
         self.root = tkinter.Tk()
-        self.root.wm_title("ACO")
+        self.root.wm_title("Ant Algorithms")
+
+        self.build_toolbar()
+        self.build_top_main_window_frame()
+        self.build_central_main_window_frame()
+        self.build_bottom_main_window_frame()
+
+        self.var_seed = tkinter.IntVar(master=self.root, value=0)
+        self.entry_seed = None
+
+        self.var_fixed_seed = tkinter.IntVar(master=self.root, value=0)
+        self.checkbox_fixed_seed = None
+        self.use_custom_seed = None
+
+        self.var_show_place_names = tkinter.IntVar(master=self.root, value=0)
+        self.checkbox_place_names_on_change = None
+
+        self.var_distances = tkinter.IntVar(master=self.root, value=0)
+        self.checkbox_distances_on_change = None
+
+        self.var_pheromone_amount = tkinter.IntVar(master=self.root, value=0)
+        self.checkbox_pheromone_amount_on_change = None
 
 
-        frame_algorithm_data_file = tkinter.Frame(self.root)
+        self.logging_widget = None
+        self.log = []
+        if logger is not None:
+            text_handler = GUILogHandler(self, self.log)
+            logger = logging.getLogger()
+            logger.addHandler(text_handler)
+
+    def build_top_main_window_frame(self):
+        frame_top_main_window = tkinter.Frame(self.root)
+        frame_top_main_window.pack(side=tkinter.TOP, fill=tkinter.X)
+
+        frame_algorithm_data_file = tkinter.Frame(frame_top_main_window)
         frame_algorithm_data_file.pack(side=tkinter.TOP, fill=tkinter.X)
         frame_algorithm_data_file.columnconfigure(2, weight=1)
 
@@ -118,7 +156,11 @@ class GUI:
         )
         self.checkbox_pheromone.grid(row=0, column=1, padx=(0, 10), pady=(10, 0))
 
-        frame_chart = tkinter.Frame(self.root)
+    def build_central_main_window_frame(self):
+        frame_central_main_window = tkinter.Frame(self.root)
+        frame_central_main_window.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+
+        frame_chart = tkinter.Frame(frame_central_main_window)
         frame_chart.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
         fig = plt.figure(figsize=(5, 5), dpi=100)
@@ -179,7 +221,11 @@ class GUI:
         speed_label_annot = tkinter.ttk.Label(master=frame_runstats, text="s/it")
         speed_label_annot.grid(row=0, column=6, padx=(0, 10))
 
-        frame_controls = tkinter.Frame(self.root)
+    def build_bottom_main_window_frame(self):
+        frame_bottom_main_window = tkinter.Frame(self.root)
+        frame_bottom_main_window.pack(side=tkinter.TOP, fill=tkinter.X)
+
+        frame_controls = tkinter.Frame(frame_bottom_main_window)
         frame_controls.columnconfigure(3, weight=1)
         frame_controls.pack(side=tkinter.TOP, fill=tkinter.X)
 
@@ -216,39 +262,23 @@ class GUI:
         self.button_restore = tkinter.ttk.Button(master=frame_param_controls, text="Restore Params")
         self.button_restore.grid(row=0, column=1, padx=(0, 10), pady=(10, 10))
 
-
         modified_style = tkinter.ttk.Style(master=label_frame_params)
-        modified_style.configure("modified_style.TEntry", foreground="#00dd11")
+        modified_style.configure("modified_style.TEntry", foreground=self.MODIFIED_PARAM_COLOR)
         error_style = tkinter.ttk.Style(master=label_frame_params)
-        error_style.configure("error_style.TEntry", foreground="#ff0000")
+        error_style.configure("error_style.TEntry", foreground=self.ERROR_PARAM_COLOR)
         normal_style = tkinter.ttk.Style(master=label_frame_params)
-        normal_style.configure("normal_style.TEntry", foreground="#000000")
+        normal_style.configure("normal_style.TEntry", foreground=self.NORMAL_PARAM_COLOR)
 
-        self.var_seed = tkinter.IntVar(master=self.root, value=0)
-        self.entry_seed = None
-
-        self.var_fixed_seed = tkinter.IntVar(master=self.root, value=0)
-        self.checkbox_fixed_seed = None
-        self.use_custom_seed = None
-
-        self.var_show_place_names = tkinter.IntVar(master=self.root, value=0)
-        self.checkbox_place_names_on_change = None
-
-        self.var_distances = tkinter.IntVar(master=self.root, value=0)
-        self.checkbox_distances_on_change = None
-
-        self.var_pheromone_amount = tkinter.IntVar(master=self.root, value=0)
-        self.checkbox_pheromone_amount_on_change = None
-
+    def build_toolbar(self):
         self.toolbar = tkinter.Menu(self.root)
         self.root.config(menu=self.toolbar)
         self.file_menu = tkinter.Menu(self.toolbar, tearoff="off")
-        self.file_menu.add_command(label="Save log", command=self.save_log)
+        self.file_menu.add_command(label="Save log", command=self.open_window_save_log)
         self.file_menu.add_separator()
 
         self.on_quit = None
-        self.save_params_cb = None
-        self.save_params_with_seed_cb = None
+        self.on_save_params = None
+        self.on_save_params_with_seed = None
         self.load_params_cb = None
         self.file_menu.add_command(label="Save params", command=self.save_params)
         self.file_menu.add_command(label="Save params with seed", command=self.save_params_with_seed)
@@ -259,15 +289,16 @@ class GUI:
 
         self.toolbar.add_cascade(label="File", menu=self.file_menu)
 
-        self.toolbar.add_command(label="Settings", command=self.open_setings_menu)
-        self.toolbar.add_command(label="Log", command=self.open_log_window)
+        self.toolbar.add_command(label="Settings", command=self.open_window_advanced_settings)
+        self.toolbar.add_command(label="Log", command=self.open_window_log)
 
-        self.logging_widget = None
-        self.log = []
-        if logger is not None:
-            text_handler = GUILogHandler(self, self.log)
-            logger = logging.getLogger()
-            logger.addHandler(text_handler)
+    def quit(self):
+        if self.on_quit:
+            self.on_quit()
+
+    def set_quit_fn(self, quit_fn):
+        self.on_quit = quit_fn
+        self.root.protocol("WM_DELETE_WINDOW", quit_fn)
 
     def set_paused_status(self):
         self.status.set("Paused")
@@ -280,10 +311,6 @@ class GUI:
     def set_running_status(self):
         self.status.set("Running...")
         self.label_status.configure(foreground="#dd7700")
-
-    def quit(self):
-        if self.on_quit:
-            self.on_quit()
 
     def disable_speed_label(self):
         self.speed_label.configure(textvariable="")
@@ -306,23 +333,19 @@ class GUI:
     def reset_best_path(self):
         self.var_best_len.set("--")
 
-    def set_quit_fn(self, quit_fn):
-        self.on_quit = quit_fn
-        self.root.protocol("WM_DELETE_WINDOW", quit_fn)
-
     def load_params(self):
         if self.load_params_cb:
             self.load_params_cb()
 
-    def open_log_window(self):
-        def on_close():
+    def open_window_log(self):
+        def on_window_close():
             self.logging_widget = None
             log_window.destroy()
 
         log_window = tkinter.Toplevel(self.root)
         log_window.transient(self.root)
-        log_window.title("ACO - Log")
-        log_window.protocol("WM_DELETE_WINDOW", on_close)
+        log_window.title("Ant Algorithms - Log")
+        log_window.protocol("WM_DELETE_WINDOW", on_window_close)
         self.logging_widget = tkinter.scrolledtext.ScrolledText(master=log_window)
         self.logging_widget.config(spacing3=10)
         self.logging_widget.pack(expand=True, fill="both")
@@ -331,7 +354,7 @@ class GUI:
         self.logging_widget.insert(tkinter.END, "\n".join(self.log) + trailing_newline)
         self.logging_widget.configure(state="disabled")
 
-    def save_log(self):
+    def open_window_save_log(self):
         timestamp = datetime.now().strftime("%m-%d-%H%M%S")
         alg_name = self.var_algorithm.get().replace(" ", "")
         ifilename = f"{alg_name}-{timestamp}.log"
@@ -349,14 +372,14 @@ class GUI:
         fp.close()
 
     def save_params(self):
-        if self.save_params_cb is not None:
-            self.save_params_cb()
+        if self.on_save_params is not None:
+            self.on_save_params()
 
     def save_params_with_seed(self):
-        if self.save_params_with_seed_cb is not None:
-            self.save_params_with_seed_cb()
+        if self.on_save_params_with_seed is not None:
+            self.on_save_params_with_seed()
 
-    def open_save_params(self, custom_str : str = ""):
+    def open_window_save_params(self, custom_str : str = ""):
         timestamp = datetime.now().strftime("%H%M%S")
         alg_name = self.var_algorithm.get().replace(" ", "")
         filename = f"{alg_name}-params{custom_str}-{timestamp}.json"
@@ -366,10 +389,10 @@ class GUI:
             initialfile=filename
         )
 
-    def open_setings_menu(self):
+    def open_window_advanced_settings(self):
         settings_window = tkinter.Toplevel(self.root)
         settings_window.transient(self.root)
-        settings_window.title("ACO - Advanced settings")
+        settings_window.title("Ant Algorithms - Advanced settings")
 
         label_seed = tkinter.Label(master=settings_window, text="Seed")
         label_seed.pack(side=tkinter.TOP)
@@ -528,14 +551,14 @@ class GUI:
 
         self.canvas.draw()
 
-    def open_data_file(self):
+    def open_window_data_file(self):
         return tkinter.filedialog.askopenfilename(
             master=self.root,
             title="Select input file with data",
             filetypes=(("JSON files", "*.json*"), ("All files", "*.*")),
         )
 
-    def open_params_file(self):
+    def open_window_params_file(self):
         return tkinter.filedialog.askopenfilename(
             master=self.root,
             title="Select file with params",
@@ -551,17 +574,20 @@ class GUI:
             default, label_text, var_type, validator = new_params[param_name]
             var_param_entry = var_type(master=self.param_frame, value=default)
 
+            c = (i // self.MAX_PARAM_IN_COLUMN) * 2
+            r = i % self.MAX_PARAM_IN_COLUMN
+
             label_param_entry = tkinter.ttk.Label(master=self.param_frame, text=label_text, anchor="e")
-            label_param_entry.grid(row=i + 1, column=0, padx=(10, 10), pady=(0, 10), sticky="W")
+            label_param_entry.grid(row=r, column=c, padx=(10, 10), pady=(0, 10), sticky="W")
 
             param_entry = tkinter.ttk.Entry(
                 name=param_name, master=self.param_frame, textvariable=var_param_entry
             )
-            param_entry.grid(row=i + 1, column=1, padx=(0, 10), pady=(0, 10))
+            param_entry.grid(row=r, column=c + 1, padx=(0, 10), pady=(0, 10))
 
             var_param_entry.trace_add(
                 "write",
-                lambda *args, param_name=param_name, **kwargs: self.param_changed(
+                lambda *args, param_name=param_name: self.param_changed(
                     param_name
                 ),
             )
