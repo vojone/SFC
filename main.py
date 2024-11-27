@@ -198,19 +198,13 @@ class App:
             raise Exception("missing parameter 'algorithm'")
         self.set_algorithm(params_dict["algorithm"])
 
-        if "total_iterations" not in params_dict:
-            raise Exception("missing parameter 'total_iterations'")
-        self.total_iterations = params_dict["total_iterations"]
-        if self.has_gui:
-            self.gui.var_total_iterations.set(params_dict["total_iterations"])
-
         if "seed" in params_dict:
             self.seed = params_dict["seed"]
             if self.has_gui:
                 self.gui.var_seed.set(params_dict["seed"])
 
         for param_name in params_dict:
-            if param_name in ["seed", "total_iterations", "algorithm"]:
+            if param_name in ["seed", "algorithm"]:
                 continue
 
             if param_name not in self.current_params:
@@ -420,11 +414,12 @@ class App:
         if not self.gui.param_validate():
             return False
 
-        self.total_iterations = self.gui.var_total_iterations.get()
-        self.gui.var_total_iterations_stored.set(self.total_iterations)
         self.current_params.clear()
         for p in self.gui.param_dict:
             self.current_params[p] = self.gui.param_dict[p][0].get()
+
+        self.total_iterations = self.gui.param_dict["iterations"][0].get()
+        self.gui.var_total_iterations.set(self.total_iterations)
         self.gui.param_stored()
 
         return True
@@ -433,7 +428,6 @@ class App:
         if not self.has_gui:
             return
 
-        self.gui.var_total_iterations.set(self.total_iterations)
         for p in self.gui.param_dict:
             self.gui.param_dict[p][0].set(self.current_params[p])
         self.gui.param_stored()
@@ -441,7 +435,6 @@ class App:
     def make_params_dict(self) -> dict:
         result = {}
         result["algorithm"] = self.gui.var_algorithm.get()
-        result["total_iterations"] = self.total_iterations
         for p in self.current_params:
             result[p] = self.current_params[p]
 
@@ -449,14 +442,13 @@ class App:
 
     def algorithm_init(self):
         if self.has_gui:
-            stored_params_str = f"initializing with seed={self.seed}, total_iterations={self.total_iterations}"
+            stored_params_str = f"initializing with seed={self.seed}"
             for p in self.current_params:
                 stored_params_str += f", {p}={self.current_params[p]}"
             logging.info(stored_params_str)
 
         self.algorithm = self.algorithm_class(
             alg.AntAlgorithm.tuples_to_places(self.data),
-            iterations=self.total_iterations,
             **self.current_params,
         )
         self.algorithm.start()

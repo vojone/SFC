@@ -31,42 +31,33 @@ def float_between_one_and_zero(x):
         raise Exception(f"expected float between 0.0 and 1.0, got {x}")
 
 class GUI:
+    ANT_ALGORITHM_COMMON_PARAMS = {
+         "iterations": (100, "Iterations", tkinter.IntVar, positive_integer),
+        "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
+        "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
+        "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
+        "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+    }
+
     ALGORIHTM_PARAMS = {
         "Ant System": {
-            "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
-            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
-            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
-            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+            **ANT_ALGORITHM_COMMON_PARAMS,
         },
         "Ant Density": {
-            "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
-            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
-            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
-            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+            **ANT_ALGORITHM_COMMON_PARAMS,
         },
         "Ant Quantity": {
-            "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
-            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
-            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
-            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+            **ANT_ALGORITHM_COMMON_PARAMS,
         },
         "Ant Colony": {
-            "ant_amount": (20, "Number Of Ants", tkinter.DoubleVar, positive_integer),
-            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
-            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
-            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+            **ANT_ALGORITHM_COMMON_PARAMS,
             "exploitation_coef": (0.3, "Exploitation threshold ", tkinter.DoubleVar, float_between_one_and_zero),
         },
         "Elitist Strategy": {
-            "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
-            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
-            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
-            "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+            **ANT_ALGORITHM_COMMON_PARAMS,
         },
         "Min-Max Ant System": {
-            "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
-            "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
-            "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
+            **ANT_ALGORITHM_COMMON_PARAMS,
             "vaporization": (5e-5, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
             "min_pheromone": (0.7, "Min pheromone", tkinter.DoubleVar, valid_float),
             "max_pheromone": (1.0, "Max pheromone", tkinter.DoubleVar, valid_float),
@@ -167,7 +158,7 @@ class GUI:
         frame_runstats.pack(side=tkinter.TOP, fill=tkinter.X)
 
         self.var_iterations = tkinter.IntVar(master=frame_runstats, value=0)
-        self.var_total_iterations_stored = tkinter.IntVar(master=frame_runstats, value=0)
+        self.var_total_iterations = tkinter.IntVar(master=frame_runstats, value=0)
         label_iterations_annotation = tkinter.ttk.Label(master=frame_runstats, text="It.:")
         label_iterations_annotation.grid(row=0, column=0, padx=(10, 5))
         self.label_iterations = tkinter.ttk.Label(
@@ -177,7 +168,7 @@ class GUI:
         label_iterations_annotation_sep = tkinter.ttk.Label(master=frame_runstats, text="/")
         label_iterations_annotation_sep.grid(row=0, column=2)
 
-        label_iterations_annotation_total = tkinter.ttk.Label(master=frame_runstats, textvariable=self.var_total_iterations_stored)
+        label_iterations_annotation_total = tkinter.ttk.Label(master=frame_runstats, textvariable=self.var_total_iterations)
         label_iterations_annotation_total.grid(row=0, column=3)
 
 
@@ -214,16 +205,6 @@ class GUI:
         self.param_frame = tkinter.Frame(master=label_frame_params)
         self.param_frame.grid(row=1, column=0, columnspan=2)
         self.param_dict = {}
-
-        self.var_total_iterations = tkinter.IntVar(master=label_frame_params, value=100)
-        self.label_total_iterations = tkinter.ttk.Label(
-            master=self.param_frame, text="Total iterations", name="total_it_label", anchor="e"
-        )
-        self.label_total_iterations.grid(row=0, column=0, padx=(10, 0), pady=(10, 10), sticky="W")
-        self.entry_total_iterations = tkinter.ttk.Entry(
-            master=self.param_frame, textvariable=self.var_total_iterations, name="total_it_entry"
-        )
-        self.entry_total_iterations.grid(row=0, column=1, padx=(10, 20), pady=(10, 10), sticky="W")
 
         frame_param_controls = tkinter.Frame(self.root)
         frame_param_controls.columnconfigure(2, weight=1)
@@ -563,8 +544,6 @@ class GUI:
 
     def update_params(self, new_params: dict):
         for c in self.param_frame.winfo_children():
-            if c.winfo_name() in ["total_it_label", "total_it_entry"]:
-                continue
             c.destroy()
 
         self.param_dict.clear()
