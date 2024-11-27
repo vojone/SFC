@@ -4,7 +4,6 @@ import sys
 import os
 import json
 import threading
-import queue
 import logging
 import numpy
 import numpy.typing
@@ -18,50 +17,10 @@ def get_seed():
     return numpy.random.randint(1, int(1e9))
 
 
-class GUIUpdater:
-    def __init__(self, gui: GUI, terminate_cb):
-        self.gui = gui
-        self.result_queue = queue.Queue()
-        self.terminate_event = threading.Event()
-        self.terminate_cb = terminate_cb
-        self.thread = threading.Thread(target=self.runner)
-
-    def start(self):
-        self.thread.start()
-
-    def update(self, best_path_len : float, current_iteration : int, total_time : float):
-        self.result_queue.put((best_path_len, current_iteration, total_time))
-
-    def reset(self, current_iteration : int = 0):
-        self.result_queue.put((None, current_iteration, None))
-
-    def terminate(self):
-        self.terminate_event.set()
-        self.result_queue.put((None, None, None))
-
-    def runner(self):
-        while True:
-            bpl, cit, total_time = self.result_queue.get()
-            if self.terminate_event.is_set() and bpl == None: # Termination
-                break
-            elif bpl == None: # Reset
-                self.gui.clear_log()
-                self.gui.disable_speed_label()
-                self.gui.reset_best_path()
-                self.gui.var_iterations.set(0)
-            else:
-                self.gui.update_speed(cit, total_time)
-                self.gui.update_best_path(bpl)
-                self.gui.var_iterations.set(cit)
-                self.gui.root.update_idletasks()
-
-        self.gui.root.after(0, self.terminate_cb)
-
-
 class AlgorithmRunner:
-    def __init__(self, algorithm: alg.AntAlgorithm, gui_updater: GUIUpdater | None, done_callback):
+    def __init__(self, algorithm: alg.AntAlgorithm, gui: GUI | None, done_callback):
         self.algorithm = algorithm
-        self.gui_updater = gui_updater
+        self.gui = gui
         self.thread = threading.Thread(target=self.runner)
         self.sleep_event = threading.Event()
         self.finish_task_event = threading.Event()
@@ -92,19 +51,13 @@ class AlgorithmRunner:
         self.finish_task_event.clear()
 
     def terminate(self):
+        self.run_event.clear()
         self.terminated_event.set()
         self.sleep_event.set()
-        self.run_event.clear()
-        self.thread.join()
+        while self.thread.is_alive():
+            self.gui.root.update()
 
-    def update_gui(self):
-        self.gui_updater.result_queue.put(
-            (
-                self.algorithm.best_path_len,
-                self.algorithm.current_iteration,
-                self.total_time
-            )
-        )
+        self.thread.join()
 
     def runner(self):
         while not self.terminated_event.is_set():
@@ -117,18 +70,21 @@ class AlgorithmRunner:
             if self.run_event.is_set():
                 while self.run_event.is_set() and self.algorithm.make_step():
                     self.total_time += time.time() - start_t
-                    if self.gui_updater is not None:
-                        self.update_gui()
+                    if self.gui is not None:
+                        self.gui.update_speed(self.algorithm.current_iteration, self.total_time)
+                        self.gui.update_best_path(self.algorithm.best_path_len)
+                        self.gui.var_iterations.set(self.algorithm.current_iteration)
                     start_t = time.time()
             else:
                 self.algorithm.make_step()
                 self.total_time += time.time() - start_t
-                if self.gui_updater is not None:
-                    self.update_gui()
+                if self.gui is not None:
+                    self.gui.update_speed(self.algorithm.current_iteration, self.total_time)
+                    self.gui.update_best_path(self.algorithm.best_path_len)
+                    self.gui.var_iterations.set(self.algorithm.current_iteration)
 
             if not self.terminated_event.is_set():
                 self.done_callback(not self.algorithm.is_finished)
-
             self.finish_task_event.set()
 
 
@@ -168,8 +124,6 @@ class App:
         self.total_iterations = 0
         self.seed = seed
 
-        self.gui_updater = None
-
         if has_gui:
             logger = None
             if logging_enabled:
@@ -179,8 +133,6 @@ class App:
                 logger = logging.getLogger()
 
             self.gui = GUI(logger)
-            self.gui_updater = GUIUpdater(self.gui, self._gui_quit)
-            self.gui_updater.start()
             self.gui.set_quit_fn(self._quit)
             self.gui.var_opened_file.set(
                 os.path.basename(data_filepath)
@@ -222,17 +174,13 @@ class App:
     def has_gui(self):
         return self.gui is not None
 
-    def _gui_quit(self):
-        self.gui_updater.thread.join()
-        self.gui.root.quit()
-        self.gui.root.destroy()
-
     def _quit(self):
         if self.algorithm_runner is not None:
             self.algorithm_runner.terminate()
 
-        if self.gui_updater is not None:
-            self.gui_updater.terminate()
+        if self.has_gui:
+            self.gui.root.quit()
+            self.gui.root.destroy()
 
     def _load_params(self):
         filename = self.gui.open_params_file()
@@ -282,13 +230,14 @@ class App:
         if not self.save_params():
             return
 
-        logging.info("Changes of params were succesfully saved")
+        logging.info("Changes of params succesfully saved")
         self.reset()
         self.gui.button_save["state"] = "disabled"
         self.gui.button_restore["state"] = "disabled"
 
     def _restore(self):
         self.restore_params()
+        logging.info("Changes of params were restored")
         self.reset()
         self.gui.button_save["state"] = "disabled"
         self.gui.button_restore["state"] = "disabled"
@@ -444,8 +393,11 @@ class App:
             return
 
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
+            print("THIS")
             self.algorithm_runner.terminate()
         if self.has_gui:
+            self.gui.clear_log()
+            self.gui.disable_speed_label()
             if reseed and self.gui.var_fixed_seed.get() == 0:
                 self.seed = get_seed()
                 self.gui.var_seed.set(self.seed)
@@ -454,8 +406,9 @@ class App:
         self.best_solution = None
         self.algorithm_init()
         if self.has_gui:
-            self.gui_updater.reset(self.algorithm.current_iteration)
             self.gui.set_paused_status()
+            self.gui.reset_best_path()
+            self.gui.var_iterations.set(self.algorithm.current_iteration)
             self.gui.button_stop["state"] = "disabled"
             self.gui.button_step["state"] = "normal"
             self.gui.button_run["state"] = "normal"
@@ -513,7 +466,7 @@ class App:
             logging.info(f"'{self.gui.var_algorithm.get()}' initialized")
 
         self.algorithm_runner = AlgorithmRunner(
-            self.algorithm, self.gui_updater, self._algorithm_cb
+            self.algorithm, self.gui, self._algorithm_cb
         )
         self.algorithm_runner.start()
 
