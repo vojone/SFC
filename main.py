@@ -159,10 +159,10 @@ class App:
             self.gui.checkbox_pheromone.configure(command=self._toggle_pheromone)
             self.gui.checkbox_best_path.configure(command=self._toggle_best_path)
 
-            self.gui.checkbox_place_names_on_change = self._toggle_place_names
-            self.gui.checkbox_distances_on_change = self._toggle_best_path
-            self.gui.checkbox_pheromone_amount_on_change = self._toggle_pheromone
-            self.gui.use_custom_seed = self._use_seed
+            self.gui.on_show_place_names = self._toggle_place_names
+            self.gui.on_show_distances = self._toggle_best_path
+            self.gui.on_show_pheromone_amount = self._toggle_pheromone
+            self.gui.on_use_custom_seed = self._use_seed
 
             self.gui.on_save_params = self._save_params_to_file
             self.gui.on_save_params_with_seed = self._save_params_with_seed_to_file
@@ -469,7 +469,7 @@ class App:
         self.gui.draw_path(
             best_path,
             self.algorithm.map.places,
-            bool(self.gui.var_distances.get()),
+            bool(self.gui.var_show_distances.get()),
             self.algorithm.map.distance_m,
         )
 
@@ -480,7 +480,7 @@ class App:
         self.gui.draw_matrix_data(
             self.algorithm.map.pheromone_m,
             self.algorithm.map.places,
-            bool(self.gui.var_pheromone_amount.get()),
+            bool(self.gui.var_show_pheromone_amount.get()),
         )
 
     def draw_data(self):

@@ -10,25 +10,126 @@ from datetime import datetime
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk, FigureCanvasTkAgg
 
 
-def positive_integer(x : str):
+def positive_integer(x: str):
     try:
         if int(x) <= 0:
             raise ValueError("lower than zero")
     except ValueError:
         raise Exception(f"expected integer greater than zero, got {x}")
 
-def valid_float(x : str):
+
+def valid_float(x: str):
     try:
         float(x)
     except ValueError:
         raise Exception(f"expected float, got {x}")
 
-def float_between_one_and_zero(x):
+
+def float_one_to_zero(x):
     try:
         if float(x) < 0 or float(x) > 1.0:
             raise ValueError("outside the interval")
     except ValueError:
         raise Exception(f"expected float between 0.0 and 1.0, got {x}")
+
+
+def create_checkbox(root, label, variable) -> tkinter.Checkbutton:
+    return tkinter.ttk.Checkbutton(
+        master=root,
+        text=label,
+        variable=variable,
+        onvalue=1,
+        offvalue=0,
+    )
+
+class LogWindow(tkinter.Toplevel):
+    def __init__(
+        self,
+        master,
+        on_window_close,
+        on_clear_log,
+        on_save_log,
+        log_content : str = "",
+        **kwargs
+    ):
+        super().__init__(master=master, **kwargs)
+
+        self.title("Ant Algorithms - Log")
+        self.transient(master)
+
+        if on_window_close is not None:
+            self.protocol("WM_DELETE_WINDOW", on_window_close)
+
+        self.logging_widget = tkinter.scrolledtext.ScrolledText(master=self)
+        self.logging_widget.config(spacing3=10)
+        self.logging_widget.pack(expand=True, side=tkinter.TOP, fill=tkinter.BOTH)
+
+        self.logging_widget.configure(state="normal")
+        trailing_newline = "\n" if log_content else ""
+        self.logging_widget.insert(tkinter.END, "\n".join(log_content) + trailing_newline)
+        self.logging_widget.configure(state="disabled")
+
+        frame_controls = tkinter.Frame(master=self)
+        frame_controls.pack(side=tkinter.TOP, fill=tkinter.X)
+        frame_controls.columnconfigure(2, weight=1)
+
+        clear_button = tkinter.ttk.Button(master=frame_controls, text="Clear")
+        if on_clear_log is not None:
+            clear_button.configure(command=on_clear_log)
+        clear_button.grid(row=0, column=0)
+
+        save_button = tkinter.ttk.Button(master=frame_controls, text="Save")
+        if on_save_log is not None:
+            save_button.configure(command=on_save_log)
+        save_button.grid(row=0, column=1)
+
+
+class SettingsWindow(tkinter.Toplevel):
+    def __init__(
+        self,
+        master,
+        var_seed : tkinter.StringVar,
+        var_fixed_seed : tkinter.IntVar,
+        var_show_place_names : tkinter.IntVar,
+        var_show_distances : tkinter.IntVar,
+        var_show_pheromone_amount : tkinter.IntVar,
+        **kwargs
+    ):
+        super().__init__(master=master, **kwargs)
+
+        self.title("Ant Algorithms - Advanced settings")
+        self.transient(master)
+
+        label_seed = tkinter.Label(master=self, text="Seed")
+        label_seed.pack(side=tkinter.TOP)
+        self.entry_seed = tkinter.ttk.Entry(
+            master=self, textvariable=var_seed
+        )
+        self.entry_seed.pack(side=tkinter.TOP)
+
+        self.button_use_seed = tkinter.Button(self, text="Use")
+        self.button_use_seed.pack(side=tkinter.TOP)
+
+        self.checkbox_fix_seed = create_checkbox(
+            self, "Fix seed", var_fixed_seed
+        )
+        self.checkbox_fix_seed.pack(side=tkinter.TOP)
+
+        self.checkbox_show_place_names = create_checkbox(
+            self, "Show place names", var_show_place_names
+        )
+        self.checkbox_show_place_names.pack(side=tkinter.BOTTOM)
+
+        self.checkbox_show_distances = create_checkbox(
+            self, "Show path distances", var_show_distances
+        )
+        self.checkbox_show_distances.pack(side=tkinter.BOTTOM)
+
+        self.checkbox_show_pheromone_amount = create_checkbox(
+            self, "Show pheromone amount", var_show_pheromone_amount
+        )
+        self.checkbox_show_pheromone_amount.pack(side=tkinter.BOTTOM)
+
 
 class GUI:
     ANT_ALGORITHM_COMMON_PARAMS = {
@@ -36,7 +137,7 @@ class GUI:
         "ant_amount": (20, "Number Of Ants", tkinter.IntVar, positive_integer),
         "pheronome_w": (1.0, "Pheromone weight", tkinter.DoubleVar, valid_float),
         "visibility_w": (1.0, "Visibility weight", tkinter.DoubleVar, valid_float),
-        "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+        "vaporization": (0.2, "Vaporization", tkinter.DoubleVar, float_one_to_zero),
     }
 
     ALGORIHTM_PARAMS = {
@@ -51,14 +152,14 @@ class GUI:
         },
         "Ant Colony": {
             **ANT_ALGORITHM_COMMON_PARAMS,
-            "exploitation_coef": (0.3, "Exploitation threshold ", tkinter.DoubleVar, float_between_one_and_zero),
+            "exploitation_coef": (0.3, "Exploitation threshold ", tkinter.DoubleVar, float_one_to_zero),
         },
         "Elitist Strategy": {
             **ANT_ALGORITHM_COMMON_PARAMS,
         },
         "Min-Max Ant System": {
             **ANT_ALGORITHM_COMMON_PARAMS,
-            "vaporization": (5e-5, "Vaporization", tkinter.DoubleVar, float_between_one_and_zero),
+            "vaporization": (5e-5, "Vaporization", tkinter.DoubleVar, float_one_to_zero),
             "min_pheromone": (0.7, "Min pheromone", tkinter.DoubleVar, valid_float),
             "max_pheromone": (1.0, "Max pheromone", tkinter.DoubleVar, valid_float),
         },
@@ -79,6 +180,10 @@ class GUI:
     ERROR_PARAM_COLOR = "#ff0000"
     NORMAL_PARAM_COLOR = "#000000"
 
+    PAUSED_STATUS_COLOR = "#000000"
+    RUNNING_STATUS_COLOR = "#dd7700"
+    FINISHED_STATUS_COLOR = "#00aa00"
+
     MAX_PARAM_IN_COLUMN = 5
 
     def __init__(self, logger=None):
@@ -91,21 +196,15 @@ class GUI:
         self.build_bottom_main_window_frame()
 
         self.var_seed = tkinter.IntVar(master=self.root, value=0)
-        self.entry_seed = None
-
-        self.var_fixed_seed = tkinter.IntVar(master=self.root, value=0)
-        self.checkbox_fixed_seed = None
-        self.use_custom_seed = None
-
         self.var_show_place_names = tkinter.IntVar(master=self.root, value=0)
-        self.checkbox_place_names_on_change = None
+        self.var_fixed_seed = tkinter.IntVar(master=self.root, value=0)
+        self.var_show_distances = tkinter.IntVar(master=self.root, value=0)
+        self.var_show_pheromone_amount = tkinter.IntVar(master=self.root, value=0)
 
-        self.var_distances = tkinter.IntVar(master=self.root, value=0)
-        self.checkbox_distances_on_change = None
-
-        self.var_pheromone_amount = tkinter.IntVar(master=self.root, value=0)
-        self.checkbox_pheromone_amount_on_change = None
-
+        self.on_use_custom_seed = None
+        self.on_show_place_names = None
+        self.on_show_distances = None
+        self.on_show_pheromone_amount = None
 
         self.logging_widget = None
         self.log = []
@@ -123,20 +222,28 @@ class GUI:
         frame_algorithm_data_file.columnconfigure(2, weight=1)
 
         self.var_algorithm = tkinter.StringVar()
-        algorithm_label = tkinter.ttk.Label(master=frame_algorithm_data_file, text="Algorithm:")
+        algorithm_label = tkinter.ttk.Label(
+            master=frame_algorithm_data_file, text="Algorithm:"
+        )
         algorithm_label.grid(row=0, column=0, padx=(10, 5), pady=(10, 0))
         self.combobox_algorithm = tkinter.ttk.Combobox(
-            master=frame_algorithm_data_file, state="readonly", textvariable=self.var_algorithm
+            master=frame_algorithm_data_file,
+            state="readonly",
+            textvariable=self.var_algorithm,
         )
         self.combobox_algorithm.grid(row=0, column=1, pady=(10, 0))
 
-        self.var_opened_file = tkinter.StringVar(master=frame_algorithm_data_file, value="")
+        self.var_opened_file = tkinter.StringVar(
+            master=frame_algorithm_data_file, value=""
+        )
         self.opened_file_label = tkinter.ttk.Label(
             master=frame_algorithm_data_file, textvariable=self.var_opened_file
         )
         self.opened_file_label.grid(row=0, column=4, padx=(0, 5), pady=(10, 0))
 
-        self.button_open_file = tkinter.ttk.Button(master=frame_algorithm_data_file, text="Open file")
+        self.button_open_file = tkinter.ttk.Button(
+            master=frame_algorithm_data_file, text="Open file"
+        )
         self.button_open_file.grid(row=0, column=5, padx=(0, 10), pady=(10, 0))
 
         frame_display_options = tkinter.Frame(self.root)
@@ -145,13 +252,13 @@ class GUI:
         self.var_pheronomone = tkinter.IntVar(master=frame_display_options, value=0)
 
         self.var_best_path = tkinter.IntVar(master=frame_display_options, value=1)
-        self.checkbox_best_path = self.create_checkbox(
+        self.checkbox_best_path = create_checkbox(
             frame_display_options, "Show best path", self.var_best_path
         )
         self.checkbox_best_path.grid(row=0, column=0, padx=(10, 10), pady=(10, 0))
 
         self.var_pheronomone = tkinter.IntVar(master=frame_display_options, value=0)
-        self.checkbox_pheromone = self.create_checkbox(
+        self.checkbox_pheromone = create_checkbox(
             frame_display_options, "Show pheromone", self.var_pheronomone
         )
         self.checkbox_pheromone.grid(row=0, column=1, padx=(0, 10), pady=(10, 0))
@@ -186,13 +293,15 @@ class GUI:
         best_len_annotation.grid(row=0, column=0, padx=(10, 5))
 
         self.var_best_len = tkinter.StringVar(master=frame_runinfo, value="--")
-        self.label_best_len= tkinter.ttk.Label(
+        self.label_best_len = tkinter.ttk.Label(
             master=frame_runinfo, textvariable=self.var_best_len
         )
         self.label_best_len.grid(row=0, column=1)
 
         self.status = tkinter.StringVar(master=frame_runinfo, value="")
-        self.label_status = tkinter.ttk.Label(master=frame_runinfo, textvariable=self.status)
+        self.label_status = tkinter.ttk.Label(
+            master=frame_runinfo, textvariable=self.status
+        )
         self.label_status.grid(row=0, column=5, padx=(10, 10))
 
         frame_runstats = tkinter.Frame(self.root)
@@ -201,18 +310,23 @@ class GUI:
 
         self.var_iterations = tkinter.IntVar(master=frame_runstats, value=0)
         self.var_total_iterations = tkinter.IntVar(master=frame_runstats, value=0)
-        label_iterations_annotation = tkinter.ttk.Label(master=frame_runstats, text="It.:")
+        label_iterations_annotation = tkinter.ttk.Label(
+            master=frame_runstats, text="It.:"
+        )
         label_iterations_annotation.grid(row=0, column=0, padx=(10, 5))
         self.label_iterations = tkinter.ttk.Label(
             master=frame_runstats, textvariable=self.var_iterations
         )
         self.label_iterations.grid(row=0, column=1)
-        label_iterations_annotation_sep = tkinter.ttk.Label(master=frame_runstats, text="/")
+        label_iterations_annotation_sep = tkinter.ttk.Label(
+            master=frame_runstats, text="/"
+        )
         label_iterations_annotation_sep.grid(row=0, column=2)
 
-        label_iterations_annotation_total = tkinter.ttk.Label(master=frame_runstats, textvariable=self.var_total_iterations)
+        label_iterations_annotation_total = tkinter.ttk.Label(
+            master=frame_runstats, textvariable=self.var_total_iterations
+        )
         label_iterations_annotation_total.grid(row=0, column=3)
-
 
         self.speed = tkinter.DoubleVar(master=frame_runstats, value=0)
         self.speed_label = tkinter.ttk.Label(master=frame_runstats, text="--")
@@ -238,15 +352,19 @@ class GUI:
         self.button_run = tkinter.ttk.Button(master=frame_controls, text="Run")
         self.button_run.grid(row=0, column=2, padx=(0, 10), pady=(5, 10))
 
-
         self.button_reset = tkinter.ttk.Button(master=frame_controls, text="Reset")
         self.button_reset.grid(row=0, column=4, padx=(10, 10), pady=(5, 10))
 
-        param_frame_label = tkinter.ttk.Label(master=self.root, text="Parameters", foreground="gray")
+        param_frame_label = tkinter.ttk.Label(
+            master=self.root, text="Parameters", foreground="gray"
+        )
 
-
-        label_frame_params = tkinter.ttk.Labelframe(self.root, labelwidget=param_frame_label)
-        label_frame_params.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(10, 0))
+        label_frame_params = tkinter.ttk.Labelframe(
+            self.root, labelwidget=param_frame_label
+        )
+        label_frame_params.pack(
+            side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(10, 0)
+        )
 
         self.param_frame = tkinter.Frame(master=label_frame_params)
         self.param_frame.grid(row=1, column=0, columnspan=2)
@@ -256,10 +374,14 @@ class GUI:
         frame_param_controls.columnconfigure(2, weight=1)
         frame_param_controls.pack(side=tkinter.TOP, fill=tkinter.X)
 
-        self.button_save = tkinter.ttk.Button(master=frame_param_controls, text="Save Params")
+        self.button_save = tkinter.ttk.Button(
+            master=frame_param_controls, text="Save Params"
+        )
         self.button_save.grid(row=0, column=0, padx=(10, 10), pady=(10, 10))
 
-        self.button_restore = tkinter.ttk.Button(master=frame_param_controls, text="Restore Params")
+        self.button_restore = tkinter.ttk.Button(
+            master=frame_param_controls, text="Restore Params"
+        )
         self.button_restore.grid(row=0, column=1, padx=(0, 10), pady=(10, 10))
 
         modified_style = tkinter.ttk.Style(master=label_frame_params)
@@ -281,7 +403,9 @@ class GUI:
         self.on_save_params_with_seed = None
         self.load_params_cb = None
         self.file_menu.add_command(label="Save params", command=self.save_params)
-        self.file_menu.add_command(label="Save params with seed", command=self.save_params_with_seed)
+        self.file_menu.add_command(
+            label="Save params with seed", command=self.save_params_with_seed
+        )
         self.file_menu.add_separator()
         self.file_menu.add_command(label="Load params", command=self.load_params)
         self.file_menu.add_separator()
@@ -289,7 +413,9 @@ class GUI:
 
         self.toolbar.add_cascade(label="File", menu=self.file_menu)
 
-        self.toolbar.add_command(label="Settings", command=self.open_window_advanced_settings)
+        self.toolbar.add_command(
+            label="Settings", command=self.open_window_advanced_settings
+        )
         self.toolbar.add_command(label="Log", command=self.open_window_log)
 
     def quit(self):
@@ -302,15 +428,15 @@ class GUI:
 
     def set_paused_status(self):
         self.status.set("Paused")
-        self.label_status.configure(foreground="#000000")
+        self.label_status.configure(foreground=self.NORMAL_PARAM_COLOR)
 
     def set_finished_status(self):
         self.status.set("Finished")
-        self.label_status.configure(foreground="#00aa00")
+        self.label_status.configure(foreground=self.FINISHED_STATUS_COLOR)
 
     def set_running_status(self):
         self.status.set("Running...")
-        self.label_status.configure(foreground="#dd7700")
+        self.label_status.configure(foreground=self.RUNNING_STATUS_COLOR)
 
     def disable_speed_label(self):
         self.speed_label.configure(textvariable="")
@@ -319,15 +445,15 @@ class GUI:
     def enable_speed_label(self):
         self.speed_label.configure(textvariable=self.speed)
 
-    def update_speed(self, iteration : int, cumulative_time : float):
+    def update_speed(self, iteration: int, cumulative_time: float):
         if iteration == 1:
             self.enable_speed_label()
             self.speed.set(round(cumulative_time, self.SPEED_PRECISION))
         elif iteration > 0 and iteration % self.ITERATION_PER_SPEED_UPDATE == 0:
-            new_speed = cumulative_time / iteration # Compute average speed
+            new_speed = cumulative_time / iteration  # Compute average speed
             self.speed.set(round(new_speed, self.SPEED_PRECISION))
 
-    def update_best_path(self, new_best_path_len : float):
+    def update_best_path(self, new_best_path_len: float):
         self.var_best_len.set(f"{new_best_path_len:g}")
 
     def reset_best_path(self):
@@ -342,26 +468,21 @@ class GUI:
             self.logging_widget = None
             log_window.destroy()
 
-        log_window = tkinter.Toplevel(self.root)
-        log_window.transient(self.root)
-        log_window.title("Ant Algorithms - Log")
-        log_window.protocol("WM_DELETE_WINDOW", on_window_close)
-        self.logging_widget = tkinter.scrolledtext.ScrolledText(master=log_window)
-        self.logging_widget.config(spacing3=10)
-        self.logging_widget.pack(expand=True, fill="both")
-        self.logging_widget.configure(state="normal")
-        trailing_newline = "\n" if self.log else ""
-        self.logging_widget.insert(tkinter.END, "\n".join(self.log) + trailing_newline)
-        self.logging_widget.configure(state="disabled")
+        log_window = LogWindow(
+            master=self.root,
+            on_window_close=on_window_close,
+            on_save_log=self.open_window_save_log,
+            on_clear_log=self.clear_log,
+            log_content=self.log
+        )
+        self.logging_widget = log_window.logging_widget
 
     def open_window_save_log(self):
         timestamp = datetime.now().strftime("%m-%d-%H%M%S")
         alg_name = self.var_algorithm.get().replace(" ", "")
         ifilename = f"{alg_name}-{timestamp}.log"
         filename = tkinter.filedialog.asksaveasfilename(
-            confirmoverwrite=True,
-            title="Save Log As",
-            initialfile=ifilename
+            confirmoverwrite=True, title="Save Log As", initialfile=ifilename
         )
 
         if not filename:
@@ -379,71 +500,32 @@ class GUI:
         if self.on_save_params_with_seed is not None:
             self.on_save_params_with_seed()
 
-    def open_window_save_params(self, custom_str : str = ""):
+    def open_window_save_params(self, custom_str: str = ""):
         timestamp = datetime.now().strftime("%H%M%S")
         alg_name = self.var_algorithm.get().replace(" ", "")
         filename = f"{alg_name}-params{custom_str}-{timestamp}.json"
         return tkinter.filedialog.asksaveasfilename(
-            confirmoverwrite=True,
-            title="Save Params As",
-            initialfile=filename
+            confirmoverwrite=True, title="Save Params As", initialfile=filename
         )
 
     def open_window_advanced_settings(self):
-        settings_window = tkinter.Toplevel(self.root)
-        settings_window.transient(self.root)
-        settings_window.title("Ant Algorithms - Advanced settings")
-
-        label_seed = tkinter.Label(master=settings_window, text="Seed")
-        label_seed.pack(side=tkinter.TOP)
-        self.entry_seed = tkinter.Entry(
-            master=settings_window, textvariable=self.var_seed
+        settings_window = SettingsWindow(
+            master=self.root,
+            var_seed=self.var_seed,
+            var_fixed_seed=self.var_fixed_seed,
+            var_show_place_names=self.var_show_place_names,
+            var_show_distances=self.var_show_distances,
+            var_show_pheromone_amount=self.var_show_pheromone_amount,
         )
-        self.entry_seed.pack(side=tkinter.TOP)
 
-        button_use_seed = tkinter.Button(settings_window, text="Use")
-        if self.use_custom_seed:
-            button_use_seed.configure(command=self.use_custom_seed)
-        button_use_seed.pack(side=tkinter.TOP)
-
-        checkbox_fix_seed = self.create_checkbox(
-            settings_window, "Fix seed", self.var_fixed_seed
-        )
-        if checkbox_fix_seed:
-            checkbox_fix_seed.configure(command=self.checkbox_fixed_seed)
-        checkbox_fix_seed.pack(side=tkinter.TOP)
-
-        checkbox_place_names = self.create_checkbox(
-            settings_window, "Show place names", self.var_show_place_names
-        )
-        if self.checkbox_place_names_on_change:
-            checkbox_place_names.configure(command=self.checkbox_place_names_on_change)
-        checkbox_place_names.pack(side=tkinter.BOTTOM)
-
-        checkbox_distances = self.create_checkbox(
-            settings_window, "Show path distances", self.var_distances
-        )
-        if self.checkbox_distances_on_change:
-            checkbox_distances.configure(command=self.checkbox_distances_on_change)
-        checkbox_distances.pack(side=tkinter.BOTTOM)
-
-        checkbox_pheromone_amount = self.create_checkbox(
-            settings_window, "Show pheromone amount", self.var_pheromone_amount
-        )
-        if self.checkbox_pheromone_amount_on_change:
-            checkbox_pheromone_amount.configure(
-                command=self.checkbox_pheromone_amount_on_change
-            )
-        checkbox_pheromone_amount.pack(side=tkinter.BOTTOM)
-
-    def create_checkbox(self, root, label, variable) -> tkinter.Checkbutton:
-        return tkinter.ttk.Checkbutton(
-            master=root,
-            text=label,
-            variable=variable,
-            onvalue=1,
-            offvalue=0,
-        )
+        if self.on_use_custom_seed is not None:
+            settings_window.button_use_seed.configure(command=self.on_use_custom_seed)
+        if self.on_show_distances is not None:
+            settings_window.checkbox_show_distances.configure(command=self.on_show_distances)
+        if self.on_show_pheromone_amount is not None:
+            settings_window.checkbox_show_pheromone_amount.configure(command=self.on_show_pheromone_amount)
+        if self.on_show_place_names is not None:
+            settings_window.checkbox_show_place_names.configure(command=self.on_show_place_names)
 
     def draw_path(
         self,
@@ -577,8 +659,12 @@ class GUI:
             c = (i // self.MAX_PARAM_IN_COLUMN) * 2
             r = i % self.MAX_PARAM_IN_COLUMN
 
-            label_param_entry = tkinter.ttk.Label(master=self.param_frame, text=label_text, anchor="e")
-            label_param_entry.grid(row=r, column=c, padx=(10, 10), pady=(0, 10), sticky="W")
+            label_param_entry = tkinter.ttk.Label(
+                master=self.param_frame, text=label_text, anchor="e"
+            )
+            label_param_entry.grid(
+                row=r, column=c, padx=(10, 10), pady=(0, 10), sticky="W"
+            )
 
             param_entry = tkinter.ttk.Entry(
                 name=param_name, master=self.param_frame, textvariable=var_param_entry
@@ -587,9 +673,7 @@ class GUI:
 
             var_param_entry.trace_add(
                 "write",
-                lambda *args, param_name=param_name: self.param_changed(
-                    param_name
-                ),
+                lambda *args, param_name=param_name: self.param_changed(param_name),
             )
 
             self.param_dict[param_name] = (var_param_entry, param_entry, validator)
@@ -633,7 +717,6 @@ class GUI:
             self.logging_widget.delete(1.0, tkinter.END)
             self.logging_widget.configure(state="disabled")
 
-
 class GUILogHandler(logging.Handler):
     """Custom logging handler for saving logs to the variable and eventually
     for printing log to the window.
@@ -657,6 +740,5 @@ class GUILogHandler(logging.Handler):
                 self.gui.logging_widget.configure(state="disabled")
                 self.gui.logging_widget.see(tkinter.END)
 
-        self.gui.root.after(0, _task) # Plan it as a tkinter task to avoid the delay of the algorithm
-
-
+        # Plan it as a tkinter task to avoid the delay of the algorithm
+        self.gui.root.after(0, _task)
