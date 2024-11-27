@@ -642,10 +642,15 @@ class GUILogHandler(logging.Handler):
         self.formatter = logging.Formatter(self.FORMAT_STR, datefmt="%H:%M:%S")
 
     def emit(self, record: logging.LogRecord):
-        log_msg = self.format(record)
-        self.log_list.append(log_msg)
-        if self.gui.logging_widget is not None:
-            self.gui.logging_widget.configure(state="normal")
-            self.gui.logging_widget.insert(tkinter.END, f"{log_msg}\n")
-            self.gui.logging_widget.configure(state="disabled")
-            self.gui.logging_widget.see(tkinter.END)
+        def _task():
+            log_msg = self.format(record)
+            self.log_list.append(log_msg)
+            if self.gui.logging_widget is not None:
+                self.gui.logging_widget.configure(state="normal")
+                self.gui.logging_widget.insert(tkinter.END, f"{log_msg}\n")
+                self.gui.logging_widget.configure(state="disabled")
+                self.gui.logging_widget.see(tkinter.END)
+
+        self.gui.root.after(0, _task) # Plan it as a tkinter task to avoid the delay of the algorithm
+
+
