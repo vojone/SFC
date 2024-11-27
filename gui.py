@@ -90,7 +90,7 @@ class GUI:
 
 
         mock_frame__ = tkinter.Frame(self.root, background="blue")
-        mock_frame__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+        mock_frame__.pack(side=tkinter.TOP, fill=tkinter.X)
         mock_frame__.columnconfigure(2, weight=2)
 
         self.var_algorithm = tkinter.StringVar()
@@ -112,7 +112,7 @@ class GUI:
         self.button_open_file.grid(row=0, column=5, padx=(0, 10), pady=(10, 0))
 
         mock_frame2__ = tkinter.Frame(self.root, background="red")
-        mock_frame2__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+        mock_frame2__.pack(side=tkinter.TOP, fill=tkinter.X)
         mock_frame2__.columnconfigure(2, weight=1)
         self.var_pheronomone = tkinter.IntVar(master=mock_frame2__, value=0)
 
@@ -129,7 +129,7 @@ class GUI:
         self.checkbox_pheromone.grid(row=0, column=1, padx=(0, 10), pady=(10, 0))
 
         mock_frame3__ = tkinter.Frame(self.root, background="green")
-        mock_frame3__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+        mock_frame3__.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
         fig = plt.figure(figsize=(5, 5), dpi=100)
         self.graph_axis = fig.add_subplot()
@@ -148,7 +148,7 @@ class GUI:
 
         mock_frame41__ = tkinter.Frame(self.root, background="blue")
         mock_frame41__.columnconfigure(4, weight=1)
-        mock_frame41__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+        mock_frame41__.pack(side=tkinter.TOP, fill=tkinter.X)
 
         best_len_annotation = tkinter.ttk.Label(master=mock_frame41__, text="Best len:")
         best_len_annotation.grid(row=0, column=0, padx=(10, 5))
@@ -165,7 +165,7 @@ class GUI:
 
         mock_frame4__ = tkinter.Frame(self.root, background="blue")
         mock_frame4__.columnconfigure(4, weight=1)
-        mock_frame4__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+        mock_frame4__.pack(side=tkinter.TOP, fill=tkinter.X)
 
         self.var_iterations = tkinter.IntVar(master=mock_frame4__, value=0)
         self.var_total_iterations_stored = tkinter.IntVar(master=mock_frame4__, value=0)
@@ -191,7 +191,7 @@ class GUI:
 
         mock_frame6__ = tkinter.Frame(self.root, background="blue")
         mock_frame6__.columnconfigure(3, weight=1)
-        mock_frame6__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+        mock_frame6__.pack(side=tkinter.TOP, fill=tkinter.X)
 
         self.button_stop = tkinter.ttk.Button(master=mock_frame6__, text="Pause")
         self.button_stop.grid(row=0, column=0, padx=(10, 10), pady=(5, 10))
@@ -208,7 +208,7 @@ class GUI:
 
         param_frame_label = tkinter.ttk.Label(master=self.root, text="Parameters", foreground="gray")
         mock_frame5__ = tkinter.ttk.Labelframe(self.root, labelwidget=param_frame_label)
-        mock_frame5__.pack(side=tkinter.TOP, fill=tkinter.BOTH, padx=(10, 10), pady=(10, 0))
+        mock_frame5__.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(10, 0))
 
         self.param_frame = tkinter.Frame(master=mock_frame5__)
         self.param_frame.grid(row=1, column=0, columnspan=2)
@@ -226,7 +226,7 @@ class GUI:
 
         mock_frame7__ = tkinter.Frame(self.root, background="blue")
         mock_frame7__.columnconfigure(2, weight=1)
-        mock_frame7__.pack(side=tkinter.TOP, fill=tkinter.BOTH)
+        mock_frame7__.pack(side=tkinter.TOP, fill=tkinter.X)
 
         self.button_save = tkinter.ttk.Button(master=mock_frame7__, text="Save Params")
         self.button_save.grid(row=0, column=0, padx=(10, 10), pady=(10, 10))
