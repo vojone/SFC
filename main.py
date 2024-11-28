@@ -19,7 +19,7 @@ def get_seed():
 
 
 class AlgorithmRunner:
-    def __init__(self, algorithm: alg.AntAlgorithm, gui: GUI | None, done_callback):
+    def __init__(self, algorithm: alg.AntAlgorithm, gui: GUI | None, on_algorithm_done):
         self.algorithm = algorithm
         self.gui = gui
         self.thread = threading.Thread(target=self.runner)
@@ -27,7 +27,7 @@ class AlgorithmRunner:
         self.finish_task_event = threading.Event()
         self.run_event = threading.Event()
         self.terminated_event = threading.Event()
-        self.done_callback = done_callback
+        self.on_algorithm_done = on_algorithm_done
         self.total_time = 0.0
 
     @property
@@ -85,7 +85,7 @@ class AlgorithmRunner:
                     self.gui.var_iterations.set(self.algorithm.current_iteration)
 
             if not self.terminated_event.is_set():
-                self.done_callback(not self.algorithm.is_finished)
+                self.on_algorithm_done(not self.algorithm.is_finished)
             self.finish_task_event.set()
 
 
@@ -134,6 +134,7 @@ class App:
                 logger = logging.getLogger()
 
             self.gui = GUI(logger)
+
             self.gui.set_quit_fn(self._quit)
             self.gui.var_opened_file.set(
                 os.path.basename(data_filepath)
@@ -194,29 +195,6 @@ class App:
         if self.save_params():
             self.reset(reseed=("seed" not in params_dict))
 
-    def load_params(self, params_dict: dict):
-        if "algorithm" not in params_dict:
-            raise Exception("missing parameter 'algorithm'")
-        self.set_algorithm(params_dict["algorithm"])
-
-        if "seed" in params_dict:
-            self.seed = params_dict["seed"]
-            if self.has_gui:
-                self.gui.var_seed.set(params_dict["seed"])
-
-        for param_name in params_dict:
-            if param_name in ["seed", "algorithm"]:
-                continue
-
-            if param_name not in self.current_params:
-                raise Exception(f"unrecognized param '{param_name}'")
-
-            self.current_params[param_name] = params_dict[param_name]
-            if self.has_gui:
-                self.gui.param_dict[param_name][0].set(params_dict[param_name])
-                if param_name not in self.current_params:
-                    raise Exception(f"unrecognized param '{param_name}'")
-
     def _use_seed(self):
         self.seed = self.gui.var_seed.get()
         self.reset(reseed=False)
@@ -244,7 +222,7 @@ class App:
         self.reset()
         print(f"Algorithm changed to {self.gui.var_algorithm.get()}")
 
-    def _algorithm_cb(self, continues: bool):
+    def _on_algorithm_done(self, continues: bool):
         self.best_solution = (self.algorithm.best_path, self.algorithm.best_path_len)
 
         if self.algorithm.is_finished:
@@ -295,7 +273,6 @@ class App:
         if self.algorithm_runner is None:
             return
 
-
         self.gui.set_running_status()
         self.algorithm_runner.run()
         self.gui.button_stop["state"] = "enabled"
@@ -309,7 +286,6 @@ class App:
         data_filename = os.path.basename(self.data_filepath)
         self.gui.var_opened_file.set(data_filename)
         self.load_data()
-        self._reset()
 
     def _toggle_pheromone(self):
         if self.gui.var_pheronomone.get() == 1:
@@ -349,6 +325,29 @@ class App:
         params["seed"] = self.seed
         fp.write(json.dumps(params, indent=4))
         fp.close()
+
+    def load_params(self, params_dict: dict):
+        if "algorithm" not in params_dict:
+            raise Exception("missing parameter 'algorithm'")
+        self.set_algorithm(params_dict["algorithm"])
+
+        if "seed" in params_dict:
+            self.seed = params_dict["seed"]
+            if self.has_gui:
+                self.gui.var_seed.set(params_dict["seed"])
+
+        for param_name in params_dict:
+            if param_name in ["seed", "algorithm"]:
+                continue
+
+            if param_name not in self.current_params:
+                raise Exception(f"unrecognized param '{param_name}'")
+
+            self.current_params[param_name] = params_dict[param_name]
+            if self.has_gui:
+                self.gui.param_dict[param_name][0].set(params_dict[param_name])
+                if param_name not in self.current_params:
+                    raise Exception(f"unrecognized param '{param_name}'")
 
     def add_to_draw(self, name: str, draw_fn):
         self.to_draw[name] = draw_fn
@@ -489,7 +488,7 @@ class App:
             logging.info(f"'{self.gui.var_algorithm.get()}' initialized")
 
         self.algorithm_runner = AlgorithmRunner(
-            self.algorithm, self.gui, self._algorithm_cb
+            self.algorithm, self.gui, self._on_algorithm_done
         )
         self.algorithm_runner.start()
 

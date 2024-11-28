@@ -654,14 +654,21 @@ class GUI:
         return tkinter.filedialog.askopenfilename(
             master=self.root,
             title="Select input file with data",
-            filetypes=(("JSON files", "*.json*"), ("All files", "*.*")),
+            filetypes=(
+                ("JSON files", "*.json*"),
+                ("CSV files", "*.csv*"),
+                ("All files", "*.*"),
+            )
         )
 
     def open_window_params_file(self):
         return tkinter.filedialog.askopenfilename(
             master=self.root,
             title="Select file with params",
-            filetypes=(("JSON files", "*.json*"), ("All files", "*.*")),
+            filetypes=(
+                ("JSON files", "*.json*"),
+                ("All files", "*.*")
+            ),
         )
 
     def update_params(self, new_params: dict):
