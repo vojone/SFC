@@ -144,6 +144,48 @@ class SettingsWindow(tkinter.Toplevel):
         self.checkbox_show_pheromone_amount.pack(side=tkinter.TOP, padx=(10, 10), pady=(0, 10), anchor="w")
 
 
+class ConvergenceCurveWindow(tkinter.Toplevel):
+    def __init__(
+        self,
+        master,
+        best_path_history,
+        **kwargs
+    ):
+        super().__init__(master=master, **kwargs)
+
+        self.title("Ant Algorithms - Convergence")
+        self.transient(master)
+        self.minsize(300, 300)
+
+        frame_chart = tkinter.Frame(self)
+        frame_chart.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+
+        fig = plt.figure(figsize=(5, 5), dpi=100)
+        self.graph_axis = fig.add_subplot()
+
+        self.canvas = FigureCanvasTkAgg(fig, master=frame_chart)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(
+            side=tkinter.TOP, fill=tkinter.BOTH, expand=True
+        )
+
+        self.canvas_toolbar = NavigationToolbar2Tk(
+            self.canvas, frame_chart, pack_toolbar=False
+        )
+        self.canvas_toolbar.update()
+        self.canvas_toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X, padx=(10, 0))
+        self.draw(best_path_history)
+
+    def draw(self, best_path_history : list[float]):
+        self.graph_axis.cla()
+        self.graph_axis.plot(range(len(best_path_history)), best_path_history)
+        self.canvas.draw()
+
+    def clear(self):
+        self.graph_axis.cla()
+        self.canvas.draw()
+
+
 class GUI:
     ANT_ALGORITHM_COMMON_PARAMS = {
         "iterations": (100, "Iterations", tkinter.IntVar, positive_integer),
@@ -219,6 +261,9 @@ class GUI:
         self.on_show_place_names = None
         self.on_show_distances = None
         self.on_show_pheromone_amount = None
+
+        self.best_path_history = None
+        self.convergence_window = None
 
         self.logging_widget = None
         self.log = []
@@ -431,6 +476,7 @@ class GUI:
             label="Settings", command=self.open_window_advanced_settings
         )
         self.toolbar.add_command(label="Log", command=self.open_window_log)
+        self.toolbar.add_command(label="Convergence", command=self.open_window_convergence)
 
     def quit(self):
         if self.on_quit:
@@ -439,6 +485,9 @@ class GUI:
     def set_quit_fn(self, quit_fn):
         self.on_quit = quit_fn
         self.root.protocol("WM_DELETE_WINDOW", quit_fn)
+
+    def set_best_path_history(self, best_path_history : list):
+        self.best_path_history = best_path_history
 
     def set_paused_status(self):
         self.status.set("Paused")
@@ -490,6 +539,12 @@ class GUI:
             log_content=self.log
         )
         self.logging_widget = log_window.logging_widget
+
+    def open_window_convergence(self):
+        self.convergence_window = ConvergenceCurveWindow(
+            self.root,
+            self.best_path_history
+        )
 
     def open_window_save_log(self):
         timestamp = datetime.now().strftime("%m-%d-%H%M%S")
