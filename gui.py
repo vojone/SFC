@@ -56,13 +56,13 @@ class LogWindow(tkinter.Toplevel):
 
         self.title("Ant Algorithms - Log")
         self.transient(master)
+        self.minsize(400, 200)
 
         if on_window_close is not None:
             self.protocol("WM_DELETE_WINDOW", on_window_close)
 
         self.logging_widget = tkinter.scrolledtext.ScrolledText(master=self)
         self.logging_widget.config(spacing3=10)
-        self.logging_widget.pack(expand=True, side=tkinter.TOP, fill=tkinter.BOTH)
 
         self.logging_widget.configure(state="normal")
         trailing_newline = "\n" if log_content else ""
@@ -70,7 +70,6 @@ class LogWindow(tkinter.Toplevel):
         self.logging_widget.configure(state="disabled")
 
         frame_controls = tkinter.Frame(master=self)
-        frame_controls.pack(side=tkinter.TOP, fill=tkinter.X)
         frame_controls.columnconfigure(2, weight=1)
 
         clear_button = tkinter.ttk.Button(master=frame_controls, text="Clear")
@@ -82,6 +81,9 @@ class LogWindow(tkinter.Toplevel):
         if on_save_log is not None:
             save_button.configure(command=on_save_log)
         save_button.grid(row=0, column=1)
+
+        frame_controls.pack(side=tkinter.BOTTOM, fill=tkinter.X)
+        self.logging_widget.pack(expand=True, side=tkinter.TOP, fill=tkinter.BOTH)
 
 
 class SettingsWindow(tkinter.Toplevel):
@@ -99,6 +101,7 @@ class SettingsWindow(tkinter.Toplevel):
 
         self.title("Ant Algorithms - Advanced settings")
         self.transient(master)
+        self.minsize(250, 250)
 
         label_seed = tkinter.ttk.Label(master=self, text="Seed")
         label_frame_seed_settings = tkinter.ttk.Labelframe(master=self, labelwidget=label_seed)
@@ -199,6 +202,7 @@ class GUI:
     def __init__(self, logger=None):
         self.root = tkinter.Tk()
         self.root.wm_title("Ant Algorithms")
+        self.root.minsize(400, 700)
 
         self.build_toolbar()
         self.build_top_main_window_frame()
