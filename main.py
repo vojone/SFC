@@ -386,13 +386,14 @@ class App:
             raw_data = json.load(fp)["data"]
         except json.decoder.JSONDecodeError:
             try:
-                file_content = fp.read()
-                raw_data = csv.reader(file_content.splitlines())
+                fp.seek(0)
+                raw_data = [ row for row in csv.reader(fp, delimiter=" ") if row ]
             except:
                 logging.error(
                     f"Unable to parse the input file '{self.data_filepath}'!"
                     "Expected proper JSON or CSV format."
                 )
+                return
         try:
             self.data = [ get_data(d) for d in raw_data ]
             self.data_names = [ get_data_name(d) for d in raw_data ]
