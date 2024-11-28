@@ -625,15 +625,18 @@ class GUI:
 
     def draw_data(self, data: list, zorder=90):
         self.graph_axis.scatter(
-            x=[p[1][0] for p in data], y=[p[1][1] for p in data], zorder=zorder
+            x=[p[0] for p in data], y=[p[1] for p in data], zorder=zorder
         )
 
-    def draw_data_names(self, data: list, zorder=90):
-        for p in data:
+    def draw_data_names(self, data: list, data_names: list, zorder=90):
+        for i, p in enumerate(data):
+            if data_names[i] is None:
+                continue
+
             self.graph_axis.text(
-                x=p[1][0],
-                y=p[1][1],
-                s=f" {p[0]}",
+                x=p[0],
+                y=p[1],
+                s=f" {data_names[i]}",
                 zorder=zorder,
                 fontdict={"size": 9},
             )

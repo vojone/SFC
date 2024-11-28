@@ -3,6 +3,7 @@ import tkinter
 import sys
 import os
 import json
+import csv
 import threading
 import logging
 import numpy
@@ -361,15 +362,45 @@ class App:
         self.gui.redraw_canvas(self.to_draw)
 
     def load_data(self):
+        def get_data(data_tuple : tuple):
+            if len(data_tuple) == 2:
+                return (float(data_tuple[0]), float(data_tuple[1]))
+            elif len(data_tuple) == 3:
+                return (float(data_tuple[1]), float(data_tuple[2]))
+            else:
+                raise ValueError("invalid format")
+
+        def get_data_name(data_tuple : tuple):
+            if len(data_tuple) == 2:
+                return None
+            else:
+                return data_tuple[0]
+
         try:
             fp = open(self.data_filepath, "r")
         except FileNotFoundError as e:
             logging.error(f"Error while opening data file: {e}")
             return
 
-        self.data = json.load(fp)
-        self.to_draw["data"] = self.draw_data
+        try:
+            raw_data = json.load(fp)["data"]
+        except json.decoder.JSONDecodeError:
+            try:
+                file_content = fp.read()
+                raw_data = csv.reader(file_content.splitlines())
+            except:
+                logging.error(
+                    f"Unable to parse the input file '{self.data_filepath}'!"
+                    "Expected proper JSON or CSV format."
+                )
+        try:
+            self.data = [ get_data(d) for d in raw_data ]
+            self.data_names = [ get_data_name(d) for d in raw_data ]
+        except ValueError:
+            logging.error("Invalid format of the input file!")
+            return
 
+        self.to_draw["data"] = self.draw_data
         self.reset()
 
     def set_algorithm(self, algorithm_name: str):
@@ -448,7 +479,7 @@ class App:
             logging.info(stored_params_str)
 
         self.algorithm = self.algorithm_class(
-            alg.AntAlgorithm.tuples_to_places(self.data),
+            alg.AntAlgorithm.tuples_to_places(self.data, self.data_names),
             **self.current_params,
         )
         self.algorithm.start()
@@ -489,7 +520,7 @@ class App:
 
     def draw_data_names(self):
         if self.data is not None:
-            self.gui.draw_data_names(self.data)
+            self.gui.draw_data_names(self.data, self.data_names)
 
 
 if __name__ == "__main__":

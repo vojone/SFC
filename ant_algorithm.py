@@ -17,9 +17,11 @@ class AntAlgorithm:
 
     @classmethod
     def tuples_to_places(
-        self, places: list[tuple[str, tuple[float, float]]]
+        self, coords: list[tuple[float, float]], names: list[str] = None
     ) -> list[Place]:
-        return [Place(p[1], p[0]) for p in places]
+        assert len(coords) == len(names) or names is None
+        result = [ Place(c, names[i]) if names is not None else Place(c) for i, c in enumerate(coords) ]
+        return result
 
     @property
     def current_iteration(self):
@@ -53,7 +55,7 @@ class AntSystemCommon(AntAlgorithm):
     """
 
     def __init__(self, places: list[Place], iterations: int, vaporization: float):
-        self.map : Map = Map(places, pheronomone_vaporization=vaporization)
+        self.map: Map = Map(places, pheronomone_vaporization=vaporization)
         super().__init__(iterations)
 
     def make_step(self) -> bool:
@@ -198,7 +200,6 @@ class AntColony(AntSystemCommon):
         ]
         self.exploitation_coef = exploitation_coef
 
-
     def next_place_choice(self, ant: Ant):
         """Uses the fixed threshold for decision whether prefer exploitation
         or exploration.
@@ -208,8 +209,7 @@ class AntColony(AntSystemCommon):
 
 
 class ElitistStrategy(AntAlgorithm):
-    """Contains Elitist Strategy of Ant System algorithm.
-    """
+    """Contains Elitist Strategy of Ant System algorithm."""
 
     def __init__(
         self,
@@ -221,7 +221,7 @@ class ElitistStrategy(AntAlgorithm):
         vaporization: float,
     ):
         super().__init__(iterations)
-        self.map : Map = Map(places, pheronomone_vaporization=vaporization)
+        self.map: Map = Map(places, pheronomone_vaporization=vaporization)
         self.ants = [
             Ant(
                 self.map,
@@ -249,9 +249,7 @@ class ElitistStrategy(AntAlgorithm):
         pheronomone_update_matrix = numpy.zeros(
             [len(self.map.places), len(self.map.places)]
         )
-        traversed_edge_count = numpy.zeros(
-            [len(self.map.places), len(self.map.places)]
-        )
+        traversed_edge_count = numpy.zeros([len(self.map.places), len(self.map.places)])
         for a in self.ants:
             path_len = a.get_path_len()
             path = a.get_path()
@@ -276,13 +274,18 @@ class ElitistStrategy(AntAlgorithm):
             place_i = p
             next_place_i = path[i + 1 if i + 1 < len(path) else 0]
             e = traversed_edge_count[place_i][next_place_i]
-            pheronomone_update_matrix[place_i][next_place_i] += e * (self.ants[0].pheronome_deposit / self._best_path_len)
-            pheronomone_update_matrix[next_place_i][place_i] += e * (self.ants[0].pheronome_deposit / self._best_path_len)
+            pheronomone_update_matrix[place_i][next_place_i] += e * (
+                self.ants[0].pheronome_deposit / self._best_path_len
+            )
+            pheronomone_update_matrix[next_place_i][place_i] += e * (
+                self.ants[0].pheronome_deposit / self._best_path_len
+            )
 
         self.map.vaporize_pheromone()
         self.map.add_pheromone(pheronomone_update_matrix)
 
         return True
+
 
 class MinMaxAntSystem(AntAlgorithm):
     def __init__(
@@ -297,7 +300,7 @@ class MinMaxAntSystem(AntAlgorithm):
         max_pheromone: float,
     ):
         super().__init__(iterations)
-        self.map : Map = Map(places, pheronomone_vaporization=vaporization)
+        self.map: Map = Map(places, pheronomone_vaporization=vaporization)
         self.ants = [
             Ant(
                 self.map,
@@ -342,5 +345,7 @@ class MinMaxAntSystem(AntAlgorithm):
 
         self.map.vaporize_pheromone()
         self.map.add_pheromone(pheronomone_update_matrix)
-        self.map.pheromone_m = self.map.pheromone_m.clip(self.min_pheromone, self.max_pheromone)
+        self.map.pheromone_m = self.map.pheromone_m.clip(
+            self.min_pheromone, self.max_pheromone
+        )
         return True
