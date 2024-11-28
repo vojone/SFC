@@ -100,11 +100,11 @@ class SettingsWindow(tkinter.Toplevel):
         self.title("Ant Algorithms - Advanced settings")
         self.transient(master)
 
-        label_seed = tkinter.ttk.Label(master=self, text="Seed Settings")
-        frame_seed_settings = tkinter.ttk.Labelframe(master=self, labelwidget=label_seed)
-        frame_seed_settings.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(10, 10))
+        label_seed = tkinter.ttk.Label(master=self, text="Seed")
+        label_frame_seed_settings = tkinter.ttk.Labelframe(master=self, labelwidget=label_seed)
+        label_frame_seed_settings.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(10, 10))
 
-        frame_custom_seed_settings = tkinter.Frame(master=frame_seed_settings)
+        frame_custom_seed_settings = tkinter.Frame(master=label_frame_seed_settings)
         frame_custom_seed_settings.pack(side=tkinter.TOP, fill=tkinter.X)
         self.entry_seed = tkinter.ttk.Entry(
             master=frame_custom_seed_settings, textvariable=var_seed
@@ -113,7 +113,7 @@ class SettingsWindow(tkinter.Toplevel):
         self.button_use_seed = tkinter.ttk.Button(master=frame_custom_seed_settings, text="Use")
         self.button_use_seed.grid(row=0, column=2, padx=(0, 5))
 
-        frame_fix_seed = tkinter.Frame(master=frame_seed_settings)
+        frame_fix_seed = tkinter.Frame(master=label_frame_seed_settings)
         frame_fix_seed.pack(side=tkinter.TOP, fill=tkinter.X)
 
         self.checkbox_fix_seed = create_checkbox(
@@ -121,20 +121,22 @@ class SettingsWindow(tkinter.Toplevel):
         )
         self.checkbox_fix_seed.pack(side=tkinter.TOP, padx=(10, 10), pady=(10, 10), anchor="w")
 
-        frame_display_settings = tkinter.Frame(master=self)
-        frame_display_settings.pack(side=tkinter.TOP, fill=tkinter.X)
+
+        label_display_settings = tkinter.Label(master=self, text="View")
+        label_frame_display_settings = tkinter.ttk.LabelFrame(master=self, labelwidget=label_display_settings)
+        label_frame_display_settings.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(0, 10))
         self.checkbox_show_place_names = create_checkbox(
-            self, "Show place names", var_show_place_names
+            label_frame_display_settings, "Show place names", var_show_place_names
         )
         self.checkbox_show_place_names.pack(side=tkinter.TOP, padx=(10, 10), anchor="w")
 
         self.checkbox_show_distances = create_checkbox(
-            self, "Show path distances", var_show_distances
+            label_frame_display_settings, "Show path distances", var_show_distances
         )
         self.checkbox_show_distances.pack(side=tkinter.TOP, padx=(10, 10), anchor="w")
 
         self.checkbox_show_pheromone_amount = create_checkbox(
-            self, "Show pheromone amount", var_show_pheromone_amount
+            label_frame_display_settings, "Show pheromone amount", var_show_pheromone_amount
         )
         self.checkbox_show_pheromone_amount.pack(side=tkinter.TOP, padx=(10, 10), pady=(0, 10), anchor="w")
 
