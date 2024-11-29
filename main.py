@@ -22,6 +22,10 @@ def get_seed():
 class AlgorithmStats:
     def __init__(self):
         self.best_solution_history = []
+        self.total_time = 0.0
+
+    def reset_total_time(self):
+        self.total_time = 0.0
 
     def reset_best_solution(self):
         self.best_solution_history = []
@@ -30,10 +34,18 @@ class AlgorithmStats:
         self.best_solution_history.append(new_best_solution)
 
 
-
-
 class AlgorithmRunner:
-    def __init__(self, algorithm: alg.AntAlgorithm, gui: GUI | None, algorithm_stats: AlgorithmStats, on_algorithm_done):
+    IT_PER_PERIODIC_UPDATE = 10
+
+    def __init__(
+        self,
+        algorithm: alg.AntAlgorithm,
+        gui: GUI | None,
+        algorithm_stats: AlgorithmStats,
+        on_algorithm_done,
+        iteration_done_update,
+        periodic_update
+    ):
         self.algorithm = algorithm
         self.gui = gui
         self.thread = threading.Thread(target=self.runner)
@@ -42,7 +54,8 @@ class AlgorithmRunner:
         self.run_event = threading.Event()
         self.terminated_event = threading.Event()
         self.on_algorithm_done = on_algorithm_done
-        self.total_time = 0.0
+        self.iteration_done_update = iteration_done_update
+        self.periodic_update = periodic_update
         self.algorithm_stats = algorithm_stats
 
     @property
@@ -52,6 +65,7 @@ class AlgorithmRunner:
     def start(self):
         self.thread.start()
         self.algorithm_stats.reset_best_solution()
+        self.algorithm_stats.reset_total_time()
 
     def stop(self):
         self.run_event.clear()
@@ -76,11 +90,6 @@ class AlgorithmRunner:
 
         self.thread.join()
 
-    def update_gui(self):
-        self.gui.update_speed(self.algorithm.current_iteration, self.total_time)
-        self.gui.update_best_path(self.algorithm.best_path_len)
-        self.gui.var_iterations.set(self.algorithm.current_iteration)
-
     def runner(self):
         while not self.terminated_event.is_set():
             self.sleep_event.wait()
@@ -91,17 +100,17 @@ class AlgorithmRunner:
             start_t = time.time()
             if self.run_event.is_set():
                 while self.run_event.is_set() and self.algorithm.make_step():
-                    self.total_time += time.time() - start_t
-                    self.algorithm_stats.add_best_solution(self.algorithm.best_path_len)
-                    if self.gui is not None:
-                        self.update_gui()
+                    self.algorithm_stats.total_time += time.time() - start_t
+                    self.iteration_done_update()
+                    if self.algorithm.current_iteration % self.IT_PER_PERIODIC_UPDATE:
+                        self.periodic_update()
                     start_t = time.time()
             else:
                 self.algorithm.make_step()
-                self.total_time += time.time() - start_t
-                self.algorithm_stats.add_best_solution(self.algorithm.best_path_len)
-                if self.gui is not None:
-                     self.update_gui()
+                self.algorithm_stats.total_time += time.time() - start_t
+                self.iteration_done_update()
+                if self.algorithm.current_iteration % self.IT_PER_PERIODIC_UPDATE:
+                    self.periodic_update()
 
             if not self.terminated_event.is_set():
                 self.on_algorithm_done(not self.algorithm.is_finished)
@@ -266,6 +275,19 @@ class App:
                 self.gui.button_step["state"] = "normal"
                 self.gui.button_run["state"] = "normal"
                 self.gui.set_paused_status()
+
+    def _on_algorithm_periodic_update(self):
+        pass
+
+    def _on_algorithm_iteration_done(self):
+        self.algorithm_stats.add_best_solution(self.algorithm.best_path_len)
+        if self.has_gui:
+            self.gui.update_speed(
+                self.algorithm.current_iteration,
+                self.algorithm_stats.total_time
+            )
+            self.gui.update_best_path(self.algorithm.best_path_len)
+            self.gui.var_iterations.set(self.algorithm.current_iteration)
 
     def _stop(self):
         if self.algorithm_runner is not None:
@@ -515,7 +537,12 @@ class App:
             logging.info(f"'{self.gui.var_algorithm.get()}' initialized")
 
         self.algorithm_runner = AlgorithmRunner(
-            self.algorithm, self.gui, self.algorithm_stats, self._on_algorithm_done
+            self.algorithm,
+            self.gui,
+            self.algorithm_stats,
+            self._on_algorithm_done,
+            self._on_algorithm_iteration_done,
+            self._on_algorithm_periodic_update,
         )
         self.algorithm_runner.start()
 
