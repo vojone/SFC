@@ -95,6 +95,7 @@ class SettingsWindow(tkinter.Toplevel):
         var_show_place_names : tkinter.IntVar,
         var_show_distances : tkinter.IntVar,
         var_show_pheromone_amount : tkinter.IntVar,
+        var_continuous_updates : tkinter.IntVar,
         **kwargs
     ):
         super().__init__(master=master, **kwargs)
@@ -141,8 +142,12 @@ class SettingsWindow(tkinter.Toplevel):
         self.checkbox_show_pheromone_amount = create_checkbox(
             label_frame_display_settings, "Show pheromone amount", var_show_pheromone_amount
         )
-        self.checkbox_show_pheromone_amount.pack(side=tkinter.TOP, padx=(10, 10), pady=(0, 10), anchor="w")
+        self.checkbox_show_pheromone_amount.pack(side=tkinter.TOP, padx=(10, 10), anchor="w")
 
+        checkbox_continuous_updates = create_checkbox(
+            label_frame_display_settings, "Continuous updates of charts", var_continuous_updates
+        )
+        checkbox_continuous_updates.pack(side=tkinter.TOP, padx=(10, 10), pady=(0, 10), anchor="w")
 
 class ConvergenceWindow(tkinter.Toplevel):
     def __init__(
@@ -280,14 +285,15 @@ class GUI:
 
         self.build_toolbar()
         self.build_top_main_window_frame()
-        self.build_central_main_window_frame()
         self.build_bottom_main_window_frame()
+        self.build_central_main_window_frame()
 
         self.var_seed = tkinter.IntVar(master=self.root, value=0)
         self.var_show_place_names = tkinter.IntVar(master=self.root, value=0)
         self.var_fixed_seed = tkinter.IntVar(master=self.root, value=0)
         self.var_show_distances = tkinter.IntVar(master=self.root, value=0)
         self.var_show_pheromone_amount = tkinter.IntVar(master=self.root, value=0)
+        self.var_continuous_updates = tkinter.IntVar(master=self.root, value=0)
 
         self.on_use_custom_seed = None
         self.on_show_place_names = None
@@ -428,7 +434,7 @@ class GUI:
 
     def build_bottom_main_window_frame(self):
         frame_bottom_main_window = tkinter.Frame(self.root)
-        frame_bottom_main_window.pack(side=tkinter.TOP, fill=tkinter.X)
+        frame_bottom_main_window.pack(side=tkinter.BOTTOM, fill=tkinter.X)
 
         frame_controls = tkinter.Frame(frame_bottom_main_window)
         frame_controls.columnconfigure(3, weight=1)
@@ -447,11 +453,11 @@ class GUI:
         self.button_reset.grid(row=0, column=4, padx=(10, 10), pady=(5, 10))
 
         param_frame_label = tkinter.ttk.Label(
-            master=self.root, text="Parameters", foreground="gray"
+            master=frame_bottom_main_window, text="Parameters", foreground="gray"
         )
 
         label_frame_params = tkinter.ttk.Labelframe(
-            self.root, labelwidget=param_frame_label
+            frame_bottom_main_window, labelwidget=param_frame_label
         )
         label_frame_params.pack(
             side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(10, 0)
@@ -461,7 +467,7 @@ class GUI:
         self.param_frame.grid(row=1, column=0, columnspan=2)
         self.param_dict = {}
 
-        frame_param_controls = tkinter.Frame(self.root)
+        frame_param_controls = tkinter.Frame(frame_bottom_main_window)
         frame_param_controls.columnconfigure(2, weight=1)
         frame_param_controls.pack(side=tkinter.TOP, fill=tkinter.X)
 
@@ -618,6 +624,7 @@ class GUI:
             var_show_place_names=self.var_show_place_names,
             var_show_distances=self.var_show_distances,
             var_show_pheromone_amount=self.var_show_pheromone_amount,
+            var_continuous_updates=self.var_continuous_updates,
         )
 
         if self.on_use_custom_seed is not None:

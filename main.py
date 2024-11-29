@@ -127,7 +127,7 @@ class App:
 
     TEMRINAL_LOG_FORMAT_STR = "%(levelname)s: %(message)s"
 
-    CONTINUOS_UPDATES = True
+    CONTINUOS_UPDATES_DEFAULT = False
 
     def __init__(
         self,
@@ -198,6 +198,8 @@ class App:
             self.gui.on_save_params_with_seed = self._save_params_with_seed_to_file
             self.gui.load_params_cb = self._load_params
 
+            self.gui.var_continuous_updates.set(self.CONTINUOS_UPDATES_DEFAULT)
+
             self._toggle_best_path()
 
     @property
@@ -265,9 +267,9 @@ class App:
             self.gui.update_best_path(self.algorithm.best_path_len)
             self.gui.var_iterations.set(self.algorithm.current_iteration)
 
-        if solution_update and self.CONTINUOS_UPDATES:
+        if solution_update:
             self.algorithm_stats.set_best(self.algorithm.best_path, self.algorithm.best_path_len)
-            if self.has_gui:
+            if self.has_gui and self.gui.var_continuous_updates.get():
                 self.gui.redraw_canvas(self.to_draw)
                 if self.gui.convergence_window is not None:
                     self.gui.convergence_window.draw(self.algorithm_stats.best_len_history)
@@ -440,7 +442,7 @@ class App:
 
         try:
             raw_data = json.load(fp)["data"]
-        except [json.decoder.JSONDecodeErrorm, TypeError]:
+        except (json.decoder.JSONDecodeError, TypeError, KeyError) as _:
             try:
                 fp.seek(0)
                 raw_data = [ row for row in csv.reader(fp, delimiter=" ") if row ]
