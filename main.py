@@ -18,8 +18,22 @@ def get_seed():
     return numpy.random.randint(1, int(1e9))
 
 
+
+class AlgorithmStats:
+    def __init__(self):
+        self.best_solution_history = []
+
+    def reset_best_solution(self):
+        self.best_solution_history = []
+
+    def add_best_solution(self, new_best_solution : float):
+        self.best_solution_history.append(new_best_solution)
+
+
+
+
 class AlgorithmRunner:
-    def __init__(self, algorithm: alg.AntAlgorithm, gui: GUI | None, best_history: list, on_algorithm_done):
+    def __init__(self, algorithm: alg.AntAlgorithm, gui: GUI | None, algorithm_stats: AlgorithmStats, on_algorithm_done):
         self.algorithm = algorithm
         self.gui = gui
         self.thread = threading.Thread(target=self.runner)
@@ -29,7 +43,7 @@ class AlgorithmRunner:
         self.terminated_event = threading.Event()
         self.on_algorithm_done = on_algorithm_done
         self.total_time = 0.0
-        self.best_history = best_history
+        self.algorithm_stats = algorithm_stats
 
     @property
     def is_alive(self):
@@ -37,6 +51,7 @@ class AlgorithmRunner:
 
     def start(self):
         self.thread.start()
+        self.algorithm_stats.reset_best_solution()
 
     def stop(self):
         self.run_event.clear()
@@ -61,6 +76,11 @@ class AlgorithmRunner:
 
         self.thread.join()
 
+    def update_gui(self):
+        self.gui.update_speed(self.algorithm.current_iteration, self.total_time)
+        self.gui.update_best_path(self.algorithm.best_path_len)
+        self.gui.var_iterations.set(self.algorithm.current_iteration)
+
     def runner(self):
         while not self.terminated_event.is_set():
             self.sleep_event.wait()
@@ -72,20 +92,16 @@ class AlgorithmRunner:
             if self.run_event.is_set():
                 while self.run_event.is_set() and self.algorithm.make_step():
                     self.total_time += time.time() - start_t
-                    self.best_history.append(self.algorithm.best_path_len)
+                    self.algorithm_stats.add_best_solution(self.algorithm.best_path_len)
                     if self.gui is not None:
-                        self.gui.update_speed(self.algorithm.current_iteration, self.total_time)
-                        self.gui.update_best_path(self.algorithm.best_path_len)
-                        self.gui.var_iterations.set(self.algorithm.current_iteration)
+                        self.update_gui()
                     start_t = time.time()
             else:
                 self.algorithm.make_step()
                 self.total_time += time.time() - start_t
-                self.best_history.append(self.algorithm.best_path_len)
+                self.algorithm_stats.add_best_solution(self.algorithm.best_path_len)
                 if self.gui is not None:
-                    self.gui.update_speed(self.algorithm.current_iteration, self.total_time)
-                    self.gui.update_best_path(self.algorithm.best_path_len)
-                    self.gui.var_iterations.set(self.algorithm.current_iteration)
+                     self.update_gui()
 
             if not self.terminated_event.is_set():
                 self.on_algorithm_done(not self.algorithm.is_finished)
@@ -112,6 +128,7 @@ class App:
         logging_enabled: str = True,
     ):
         self.data_filepath = data_filepath
+        self.algorithm_stats = AlgorithmStats()
 
         self.data: list | None = None
         self.algorithm: alg.AntAlgorithm | None = None
@@ -120,7 +137,6 @@ class App:
         self.run_jobid = None
 
         self.best_solution = None
-        self.best_history = []
         self.to_draw = {}
 
         default_algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
@@ -137,7 +153,7 @@ class App:
                 )
                 logger = logging.getLogger()
 
-            self.gui = GUI(logger)
+            self.gui = GUI(self.algorithm_stats, logger)
 
             self.gui.set_quit_fn(self._quit)
             self.gui.var_opened_file.set(
@@ -173,8 +189,6 @@ class App:
             self.gui.on_save_params = self._save_params_to_file
             self.gui.on_save_params_with_seed = self._save_params_with_seed_to_file
             self.gui.load_params_cb = self._load_params
-
-            self.gui.set_best_path_history(self.best_history)
 
             self._toggle_best_path()
 
@@ -241,8 +255,8 @@ class App:
             self.gui.redraw_canvas(self.to_draw)
             self.gui.button_stop["state"] = "disabled"
             if self.gui.convergence_window is not None:
-                self.gui.convergence_window.clear()
-                self.gui.convergence_window.draw(self.best_history)
+                self.gui.convergence_window.clear_canvas()
+                self.gui.convergence_window.draw(self.algorithm_stats.best_solution_history)
 
             if not continues:
                 self.gui.button_step["state"] = "disabled"
@@ -273,6 +287,8 @@ class App:
         STEP_BUTTON_RUN_MS = 600
 
         if self.algorithm_runner is None:
+            return
+        if self.algorithm.is_finished:
             return
 
         self.gui.set_running_status()
@@ -393,7 +409,7 @@ class App:
 
         try:
             raw_data = json.load(fp)["data"]
-        except json.decoder.JSONDecodeError:
+        except [json.decoder.JSONDecodeErrorm, TypeError]:
             try:
                 fp.seek(0)
                 raw_data = [ row for row in csv.reader(fp, delimiter=" ") if row ]
@@ -438,11 +454,9 @@ class App:
 
         numpy.random.seed(self.seed)
         self.best_solution = None
-        self.best_history.clear()
         self.algorithm_init()
         if self.has_gui:
-            if self.gui.convergence_window:
-                self.gui.convergence_window.clear()
+            self.gui.clear_convergence()
             self.gui.set_paused_status()
             self.gui.reset_best_path()
             self.gui.var_iterations.set(self.algorithm.current_iteration)
@@ -501,7 +515,7 @@ class App:
             logging.info(f"'{self.gui.var_algorithm.get()}' initialized")
 
         self.algorithm_runner = AlgorithmRunner(
-            self.algorithm, self.gui, self.best_history, self._on_algorithm_done
+            self.algorithm, self.gui, self.algorithm_stats, self._on_algorithm_done
         )
         self.algorithm_runner.start()
 

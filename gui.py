@@ -144,7 +144,7 @@ class SettingsWindow(tkinter.Toplevel):
         self.checkbox_show_pheromone_amount.pack(side=tkinter.TOP, padx=(10, 10), pady=(0, 10), anchor="w")
 
 
-class ConvergenceCurveWindow(tkinter.Toplevel):
+class ConvergenceWindow(tkinter.Toplevel):
     def __init__(
         self,
         master,
@@ -152,15 +152,16 @@ class ConvergenceCurveWindow(tkinter.Toplevel):
         **kwargs
     ):
         super().__init__(master=master, **kwargs)
+        self.best_path_history = best_path_history
 
         self.title("Ant Algorithms - Convergence")
         self.transient(master)
         self.minsize(300, 300)
 
         frame_chart = tkinter.Frame(self)
-        frame_chart.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
         fig = plt.figure(figsize=(5, 5), dpi=100)
+        fig.subplots_adjust(left=0.18)
         self.graph_axis = fig.add_subplot()
 
         self.canvas = FigureCanvasTkAgg(fig, master=frame_chart)
@@ -174,15 +175,47 @@ class ConvergenceCurveWindow(tkinter.Toplevel):
         )
         self.canvas_toolbar.update()
         self.canvas_toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X, padx=(10, 0))
+
+        frame_controls = tkinter.Frame(master=self)
+        frame_controls.columnconfigure(1, weight=1)
+
+        clear_button = tkinter.ttk.Button(master=frame_controls, text="Clear", command=self.clear)
+        clear_button.grid(row=0, column=0)
+
+        frame_controls.pack(side=tkinter.BOTTOM, fill=tkinter.X)
+        frame_chart.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+
         self.draw(best_path_history)
 
+    def configure_canvas(self):
+        self.graph_axis.set_xlabel("Iteration")
+        self.graph_axis.set_ylabel("Best path length")
+        self.graph_axis.xaxis.get_major_locator().set_params(integer=True)
+
     def draw(self, best_path_history : list[float]):
-        self.graph_axis.cla()
-        self.graph_axis.plot(range(len(best_path_history)), best_path_history)
+        self.remove_graphs()
+        self.configure_canvas()
+        #for run in best_path_history:
+        if len(best_path_history) == 1:
+            self.graph_axis.scatter([0], best_path_history[0])
+        elif len(best_path_history) > 0:
+            self.graph_axis.plot(range(len(best_path_history)), best_path_history)
         self.canvas.draw()
 
+    def clear_canvas(self):
+        self.remove_graphs()
+        self.canvas.draw()
+
+    def remove_graphs(self):
+        all_artists = self.graph_axis.lines + self.graph_axis.collections
+        for artist in all_artists:
+            artist.remove()
+        self.graph_axis.set_prop_cycle(None)
+
     def clear(self):
+        self.best_path_history.clear()
         self.graph_axis.cla()
+        self.configure_canvas()
         self.canvas.draw()
 
 
@@ -241,7 +274,7 @@ class GUI:
 
     MAX_PARAM_IN_COLUMN = 5
 
-    def __init__(self, logger=None):
+    def __init__(self, algorithm_stats, logger : logging.Logger = None):
         self.root = tkinter.Tk()
         self.root.wm_title("Ant Algorithms")
         self.root.minsize(400, 700)
@@ -262,11 +295,11 @@ class GUI:
         self.on_show_distances = None
         self.on_show_pheromone_amount = None
 
-        self.best_path_history = None
         self.convergence_window = None
 
         self.logging_widget = None
         self.log = []
+        self.algorithm_stats = algorithm_stats
         if logger is not None:
             text_handler = GUILogHandler(self, self.log)
             logger = logging.getLogger()
@@ -482,12 +515,13 @@ class GUI:
         if self.on_quit:
             self.on_quit()
 
+    def clear_convergence(self):
+        if self.convergence_window:
+            self.convergence_window.clear()
+
     def set_quit_fn(self, quit_fn):
         self.on_quit = quit_fn
         self.root.protocol("WM_DELETE_WINDOW", quit_fn)
-
-    def set_best_path_history(self, best_path_history : list):
-        self.best_path_history = best_path_history
 
     def set_paused_status(self):
         self.status.set("Paused")
@@ -541,9 +575,9 @@ class GUI:
         self.logging_widget = log_window.logging_widget
 
     def open_window_convergence(self):
-        self.convergence_window = ConvergenceCurveWindow(
+        self.convergence_window = ConvergenceWindow(
             self.root,
-            self.best_path_history
+            self.algorithm_stats.best_solution_history
         )
 
     def open_window_save_log(self):
