@@ -195,7 +195,6 @@ class ConvergenceWindow(tkinter.Toplevel):
     def draw(self, best_path_history : list[float]):
         self.remove_graphs()
         self.configure_canvas()
-        #for run in best_path_history:
         if len(best_path_history) == 1:
             self.graph_axis.scatter([0], best_path_history[0])
         elif len(best_path_history) > 0:
@@ -577,7 +576,7 @@ class GUI:
     def open_window_convergence(self):
         self.convergence_window = ConvergenceWindow(
             self.root,
-            self.algorithm_stats.best_solution_history
+            self.algorithm_stats.best_len_history
         )
 
     def open_window_save_log(self):

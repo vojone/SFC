@@ -21,30 +21,33 @@ def get_seed():
 
 class AlgorithmStats:
     def __init__(self):
-        self.best_solution_history = []
+        self.best_len_history = []
         self.total_time = 0.0
+        self.best_solution = None
 
     def reset_total_time(self):
         self.total_time = 0.0
 
-    def reset_best_solution(self):
-        self.best_solution_history = []
+    def reset_best_len_history(self):
+        self.best_len_history = []
+
+    def reset_best(self):
+        self.best_solution = None
 
     def add_best_solution(self, new_best_solution : float):
-        self.best_solution_history.append(new_best_solution)
+        self.best_len_history.append(new_best_solution)
 
+    def set_best(self, best_path : int, best_path_len : float):
+        self.best_solution = (best_path, best_path_len)
 
 class AlgorithmRunner:
-    IT_PER_PERIODIC_UPDATE = 10
-
     def __init__(
         self,
         algorithm: alg.AntAlgorithm,
         gui: GUI | None,
         algorithm_stats: AlgorithmStats,
         on_algorithm_done,
-        iteration_done_update,
-        periodic_update
+        iteration_done_update
     ):
         self.algorithm = algorithm
         self.gui = gui
@@ -55,7 +58,6 @@ class AlgorithmRunner:
         self.terminated_event = threading.Event()
         self.on_algorithm_done = on_algorithm_done
         self.iteration_done_update = iteration_done_update
-        self.periodic_update = periodic_update
         self.algorithm_stats = algorithm_stats
 
     @property
@@ -64,7 +66,7 @@ class AlgorithmRunner:
 
     def start(self):
         self.thread.start()
-        self.algorithm_stats.reset_best_solution()
+        self.algorithm_stats.reset_best_len_history()
         self.algorithm_stats.reset_total_time()
 
     def stop(self):
@@ -102,15 +104,11 @@ class AlgorithmRunner:
                 while self.run_event.is_set() and self.algorithm.make_step():
                     self.algorithm_stats.total_time += time.time() - start_t
                     self.iteration_done_update()
-                    if self.algorithm.current_iteration % self.IT_PER_PERIODIC_UPDATE:
-                        self.periodic_update()
                     start_t = time.time()
             else:
                 self.algorithm.make_step()
                 self.algorithm_stats.total_time += time.time() - start_t
                 self.iteration_done_update()
-                if self.algorithm.current_iteration % self.IT_PER_PERIODIC_UPDATE:
-                    self.periodic_update()
 
             if not self.terminated_event.is_set():
                 self.on_algorithm_done(not self.algorithm.is_finished)
@@ -129,6 +127,8 @@ class App:
 
     TEMRINAL_LOG_FORMAT_STR = "%(levelname)s: %(message)s"
 
+    CONTINUOS_UPDATES = True
+
     def __init__(
         self,
         data_filepath: str | None,
@@ -145,7 +145,6 @@ class App:
         self.algorithm_class = None
         self.run_jobid = None
 
-        self.best_solution = None
         self.to_draw = {}
 
         default_algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
@@ -251,13 +250,36 @@ class App:
         self.reset()
         print(f"Algorithm changed to {self.gui.var_algorithm.get()}")
 
+    def _on_algorithm_iteration_done(self):
+        solution_update = False
+        if (len(self.algorithm_stats.best_len_history) == 0 or
+            self.algorithm.best_path_len != self.algorithm_stats.best_len_history[-1]):
+            solution_update = True
+
+        self.algorithm_stats.add_best_solution(self.algorithm.best_path_len)
+        if self.has_gui:
+            self.gui.update_speed(
+                self.algorithm.current_iteration,
+                self.algorithm_stats.total_time
+            )
+            self.gui.update_best_path(self.algorithm.best_path_len)
+            self.gui.var_iterations.set(self.algorithm.current_iteration)
+
+        if solution_update and self.CONTINUOS_UPDATES:
+            self.algorithm_stats.set_best(self.algorithm.best_path, self.algorithm.best_path_len)
+            if self.has_gui:
+                self.gui.redraw_canvas(self.to_draw)
+                if self.gui.convergence_window is not None:
+                    self.gui.convergence_window.draw(self.algorithm_stats.best_len_history)
+
     def _on_algorithm_done(self, continues: bool):
-        self.best_solution = (self.algorithm.best_path, self.algorithm.best_path_len)
+        self.algorithm_stats.set_best(self.algorithm.best_path, self.algorithm.best_path_len)
 
         if self.algorithm.is_finished:
             logging.info(
                 f"Finished in it={self.algorithm.current_iteration}, best: "
-                f"len={self.best_solution[1]:g}, path={self.best_solution[0]}"
+                f"len={self.algorithm_stats.best_solution[1]:g}, "
+                f"path={self.algorithm_stats.best_solution[0]}"
             )
 
         if self.has_gui:
@@ -265,7 +287,7 @@ class App:
             self.gui.button_stop["state"] = "disabled"
             if self.gui.convergence_window is not None:
                 self.gui.convergence_window.clear_canvas()
-                self.gui.convergence_window.draw(self.algorithm_stats.best_solution_history)
+                self.gui.convergence_window.draw(self.algorithm_stats.best_len_history)
 
             if not continues:
                 self.gui.button_step["state"] = "disabled"
@@ -275,19 +297,6 @@ class App:
                 self.gui.button_step["state"] = "normal"
                 self.gui.button_run["state"] = "normal"
                 self.gui.set_paused_status()
-
-    def _on_algorithm_periodic_update(self):
-        pass
-
-    def _on_algorithm_iteration_done(self):
-        self.algorithm_stats.add_best_solution(self.algorithm.best_path_len)
-        if self.has_gui:
-            self.gui.update_speed(
-                self.algorithm.current_iteration,
-                self.algorithm_stats.total_time
-            )
-            self.gui.update_best_path(self.algorithm.best_path_len)
-            self.gui.var_iterations.set(self.algorithm.current_iteration)
 
     def _stop(self):
         if self.algorithm_runner is not None:
@@ -475,7 +484,7 @@ class App:
                 self.gui.var_seed.set(self.seed)
 
         numpy.random.seed(self.seed)
-        self.best_solution = None
+        self.algorithm_stats.reset_best()
         self.algorithm_init()
         if self.has_gui:
             self.gui.clear_convergence()
@@ -542,15 +551,14 @@ class App:
             self.algorithm_stats,
             self._on_algorithm_done,
             self._on_algorithm_iteration_done,
-            self._on_algorithm_periodic_update,
         )
         self.algorithm_runner.start()
 
     def draw_best_path(self):
-        if not self.has_gui or self.best_solution is None:
+        if not self.has_gui or self.algorithm_stats.best_solution is None:
             return
 
-        best_path = self.best_solution[0]
+        best_path = self.algorithm_stats.best_solution[0]
         self.gui.draw_path(
             best_path,
             self.algorithm.map.places,
