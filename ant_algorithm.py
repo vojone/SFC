@@ -7,7 +7,7 @@ from ant_map import Map, Place
 
 
 class AntAlgorithm:
-    """Common class for all ant optimization algorithms (Ant System, Ant Colony)."""
+    """Base class for all ant optimization algorithms."""
 
     def __init__(self, iterations: int):
         self.iterations = iterations

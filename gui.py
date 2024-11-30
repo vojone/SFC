@@ -9,6 +9,8 @@ import logging
 from datetime import datetime
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk, FigureCanvasTkAgg
 
+from algorithm_stats import AlgorithmStats
+
 
 def positive_integer(x: str):
     try:
@@ -90,6 +92,7 @@ class HistoryWindow(tkinter.Toplevel):
     def __init__(
         self,
         master,
+        algorithm_stats : AlgorithmStats,
         **kwargs
     ):
         super().__init__(master=master, **kwargs)
@@ -97,6 +100,7 @@ class HistoryWindow(tkinter.Toplevel):
         self.title("Ant Algorithms - History Of Runs")
         self.transient(master)
         self.minsize(400, 200)
+        self.algorithm_stats = algorithm_stats
 
 
         self.frame_controls = tkinter.Frame(master=self)
@@ -138,16 +142,31 @@ class HistoryWindow(tkinter.Toplevel):
         self.canvas_toolbar.update()
         self.canvas_toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X, padx=(10, 0))
 
-
         self.tree_view_runs = tkinter.ttk.Treeview(master=frame_list, columns=["algorithm", "type", "id"], show="tree headings")
         self.tree_view_runs.heading("algorithm", text="Algorithm")
         self.tree_view_runs["displaycolumns"] = ("algorithm")
         self.tree_view_runs.pack(fill=tkinter.BOTH, expand=True)
-
-        for number in range(30):
-            self.tree_view_runs.insert("", number, text=f"#{number}", values=["Ant System", 0, number], open=False)
-
         self.tree_view_runs.bind("<<TreeviewSelect>>", self.on_selection_change)
+
+        self.update_tree_view()
+
+    def update_tree_view(self):
+        if self.tree_view_runs.get_children():
+            self.tree_view_runs.delete(*self.tree_view_runs.get_children())
+
+        group_id_to_parent_id = {}
+        for group_id in self.algorithm_stats.run_groups:
+            group_name = self.algorithm_stats.run_groups[group_id].name
+            parent_id = self.tree_view_runs.insert(
+                "", tkinter.END, text=group_name, values=["", 1, group_id], open=False
+            )
+            group_id_to_parent_id[group_id] = parent_id
+
+        for run_id in self.algorithm_stats.run_history:
+            run = self.algorithm_stats.run_history[run_id]
+            parent = "" if run.group is None else group_id_to_parent_id[run.group]
+            self.tree_view_runs.insert(parent, tkinter.END, text=run.name, values=[run.algorithm, 0, run_id])
+
 
     def create_group(self):
         group_name = self.group_name_var.get().strip()
@@ -156,11 +175,15 @@ class HistoryWindow(tkinter.Toplevel):
 
         self.group_name_var.set("")
 
-        top_most_item_index = self.tree_view_runs.index(self.tree_view_runs.selection()[0])
-        parent_id = self.tree_view_runs.insert("", top_most_item_index, text=group_name, values=["", 1], open=False)
+        ids = []
+        for item in self.tree_view_runs.selection():
+            ids.append(self.tree_view_runs.item(item)["values"][2])
 
+        group_id = self.algorithm_stats.make_group(ids, group_name)
+        parent_id = self.tree_view_runs.insert("", 0, text=group_name, values=["", 1, group_id], open=False)
         for item in self.tree_view_runs.selection():
             self.tree_view_runs.move(item, parent_id, tkinter.END)
+
 
     def rename_object(self):
         name = self.new_name_var.get().strip()
@@ -170,6 +193,22 @@ class HistoryWindow(tkinter.Toplevel):
         self.new_name_var.set(name)
         self.tree_view_runs.item(self.tree_view_runs.selection()[0], text=name)
 
+        item = self.tree_view_runs.item(self.tree_view_runs.selection()[0])
+        is_group = bool(item["values"][1])
+        if is_group:
+            self.algorithm_stats.rename_group(item["values"][2], name)
+        else:
+            self.algorithm_stats.rename_run(item["values"][2], name)
+
+    def ungroup(self):
+        if not self.tree_view_runs.selection():
+            return
+
+        selected_group = self.tree_view_runs.selection()[0]
+        group = self.tree_view_runs.item(selected_group)
+        self.algorithm_stats.delete_group(group["values"][2])
+        self.update_tree_view()
+
     def display_object(self):
         if not self.tree_view_runs.selection():
             return
@@ -178,14 +217,21 @@ class HistoryWindow(tkinter.Toplevel):
         if not self.tree_view_runs.selection():
             return
 
-        self.tree_view_runs.delete(self.tree_view_runs.selection()[0])
+        item = self.tree_view_runs.item(self.tree_view_runs.selection()[0])
+        is_group = bool(item["values"][1])
+        if is_group:
+            self.algorithm_stats.delete_group(item["values"][2])
+        else:
+            self.algorithm_stats.delete_run(item["values"][2])
+
+        self.update_tree_view()
 
     def clear_controls(self):
         for c in self.frame_controls.winfo_children():
             c.destroy()
 
     def multiple_runs_controls(self):
-        self.frame_controls.columnconfigure(4, weight=1)
+        self.frame_controls.columnconfigure(3, weight=1)
 
         label_group_name = tkinter.Label(master=self.frame_controls, text="New group name")
         label_group_name.grid(row=0, column=0, padx=(10, 10))
@@ -197,7 +243,7 @@ class HistoryWindow(tkinter.Toplevel):
         create_group_button.grid(row=0, column=2, padx=(0, 10))
 
         button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
-        button_delete.grid(row=0, column=5, padx=(0, 10))
+        button_delete.grid(row=0, column=4, padx=(0, 10))
 
     def multiple_object_controls(self):
         self.frame_controls.columnconfigure(4, weight=1)
@@ -205,7 +251,7 @@ class HistoryWindow(tkinter.Toplevel):
         button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
         button_delete.grid(row=0, column=5, padx=(0, 10))
 
-    def object_controls(self):
+    def object_controls(self, is_group : bool = False):
         self.frame_controls.columnconfigure(4, weight=1)
 
         label_name = tkinter.Label(master=self.frame_controls, text="Name")
@@ -220,8 +266,12 @@ class HistoryWindow(tkinter.Toplevel):
         button_display = tkinter.ttk.Button(master=self.frame_controls, text="Display", command=self.display_object)
         button_display.grid(row=0, column=3, padx=(0, 10))
 
+        if is_group:
+            button_split = tkinter.ttk.Button(master=self.frame_controls, text="Split", command=self.ungroup)
+            button_split.grid(row=0, column=7, padx=(0, 10))
+
         button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
-        button_delete.grid(row=0, column=5, padx=(0, 10))
+        button_delete.grid(row=0, column=8, padx=(0, 10))
 
 
     def on_selection_change(self, *args, **kwargs):
@@ -237,13 +287,8 @@ class HistoryWindow(tkinter.Toplevel):
         elif selected_items_cnt == 1:
             item = self.tree_view_runs.item(self.tree_view_runs.selection()[0])
             is_group = bool(item["values"][1])
-
-            if is_group:
-                self.new_name_var.set(item["text"])
-                self.object_controls()
-            else:
-                self.new_name_var.set(item["text"])
-                self.object_controls()
+            self.new_name_var.set(item["text"])
+            self.object_controls(is_group)
 
 
 
@@ -756,9 +801,13 @@ class GUI:
         )
 
     def open_window_history(self):
-        history_window = HistoryWindow(
+        self.history_window = HistoryWindow(
             self.root,
+            self.algorithm_stats,
         )
+
+    def update_history(self):
+        self.history_window.update_tree_view()
 
     def open_window_save_log(self):
         timestamp = datetime.now().strftime("%m-%d-%H%M%S")

@@ -255,6 +255,7 @@ class App:
 
         if self.algorithm.is_finished:
             self.algorithm_stats.set_finished()
+            self.algorithm_stats.store()
             logging.info(
                 f"Finished in it={self.algorithm.current_iteration}, best: "
                 f"len={self.algorithm_stats.run.best_solution[1]:g}, "
@@ -456,9 +457,12 @@ class App:
 
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
             self.algorithm_runner.terminate()
-        if self.algorithm_stats.run is not None:
+        if self.algorithm_stats.run is not None and not self.algorithm.is_finished:
             self.algorithm_stats.store()
             print(json.dumps(self.algorithm_stats.run_history, default=vars))
+            if self.has_gui:
+                self.gui.update_history()
+
         if self.has_gui:
             self.gui.clear_log()
             self.gui.disable_speed_label()
@@ -518,7 +522,7 @@ class App:
                 stored_params_str += f", {p}={self.current_params[p]}"
             logging.info(stored_params_str)
 
-        self.algorithm_stats.run_init(self.seed, self.algorithm, self.current_params)
+        self.algorithm_stats.run_init(self.seed, self.algorithm_name, self.current_params)
         self.algorithm = self.algorithm_class(
             alg.AntAlgorithm.tuples_to_places(self.data, self.data_names),
             **self.current_params,
