@@ -105,6 +105,7 @@ class HistoryWindow(tkinter.Toplevel):
 
         self.frame_controls = tkinter.Frame(master=self)
         self.frame_controls.pack(side=tkinter.TOP, fill=tkinter.X, pady=(10, 10))
+        self.frame_controls.columnconfigure(4, weight=1)
         initial_label = tkinter.ttk.Label(master=self.frame_controls, text="Nothing selected...")
         initial_label.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(10, 10))
 
@@ -213,16 +214,31 @@ class HistoryWindow(tkinter.Toplevel):
         if not self.tree_view_runs.selection():
             return
 
+        item = self.tree_view_runs.item(self.tree_view_runs.selection()[0])
+        is_group = bool(item["values"][1])
+        if is_group:
+            pass
+        else:
+            run = self.algorithm_stats.run_history[item["values"][2]]
+            best_path_history = run.best_len_history
+            if len(best_path_history) == 1:
+                self.graph_axis.scatter([0], best_path_history[0])
+            elif len(best_path_history) > 0:
+                self.graph_axis.plot(range(len(best_path_history)), best_path_history)
+            self.canvas.draw()
+
+
     def delete_objects(self):
         if not self.tree_view_runs.selection():
             return
 
-        item = self.tree_view_runs.item(self.tree_view_runs.selection()[0])
-        is_group = bool(item["values"][1])
-        if is_group:
-            self.algorithm_stats.delete_group(item["values"][2])
-        else:
-            self.algorithm_stats.delete_run(item["values"][2])
+        for i in self.tree_view_runs.selection():
+            item = self.tree_view_runs.item(i)
+            is_group = bool(item["values"][1])
+            if is_group:
+                self.algorithm_stats.delete_group(item["values"][2])
+            else:
+                self.algorithm_stats.delete_run(item["values"][2])
 
         self.update_tree_view()
 
@@ -231,8 +247,6 @@ class HistoryWindow(tkinter.Toplevel):
             c.destroy()
 
     def multiple_runs_controls(self):
-        self.frame_controls.columnconfigure(3, weight=1)
-
         label_group_name = tkinter.Label(master=self.frame_controls, text="New group name")
         label_group_name.grid(row=0, column=0, padx=(10, 10))
 
@@ -243,17 +257,13 @@ class HistoryWindow(tkinter.Toplevel):
         create_group_button.grid(row=0, column=2, padx=(0, 10))
 
         button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
-        button_delete.grid(row=0, column=4, padx=(0, 10))
+        button_delete.grid(row=0, column=6, padx=(0, 10))
 
     def multiple_object_controls(self):
-        self.frame_controls.columnconfigure(4, weight=1)
-
         button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
-        button_delete.grid(row=0, column=5, padx=(0, 10))
+        button_delete.grid(row=0, column=6, padx=(0, 10))
 
     def object_controls(self, is_group : bool = False):
-        self.frame_controls.columnconfigure(4, weight=1)
-
         label_name = tkinter.Label(master=self.frame_controls, text="Name")
         label_name.grid(row=0, column=0, padx=(10, 10))
 
@@ -268,10 +278,10 @@ class HistoryWindow(tkinter.Toplevel):
 
         if is_group:
             button_split = tkinter.ttk.Button(master=self.frame_controls, text="Split", command=self.ungroup)
-            button_split.grid(row=0, column=7, padx=(0, 10))
+            button_split.grid(row=0, column=5, padx=(0, 10))
 
         button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
-        button_delete.grid(row=0, column=8, padx=(0, 10))
+        button_delete.grid(row=0, column=6, padx=(0, 10))
 
 
     def on_selection_change(self, *args, **kwargs):
@@ -279,7 +289,6 @@ class HistoryWindow(tkinter.Toplevel):
         self.clear_controls()
         if selected_items_cnt > 1:
             for item in self.tree_view_runs.selection():
-                print(self.tree_view_runs.item(item))
                 if self.tree_view_runs.parent(item) or self.tree_view_runs.item(item)["values"][1]:
                     return
 
