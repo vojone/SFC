@@ -86,6 +86,169 @@ class LogWindow(tkinter.Toplevel):
         self.logging_widget.pack(expand=True, side=tkinter.TOP, fill=tkinter.BOTH)
 
 
+class HistoryWindow(tkinter.Toplevel):
+    def __init__(
+        self,
+        master,
+        **kwargs
+    ):
+        super().__init__(master=master, **kwargs)
+
+        self.title("Ant Algorithms - History Of Runs")
+        self.transient(master)
+        self.minsize(400, 200)
+
+
+        self.frame_controls = tkinter.Frame(master=self)
+        self.frame_controls.pack(side=tkinter.TOP, fill=tkinter.X, pady=(10, 10))
+        initial_label = tkinter.ttk.Label(master=self.frame_controls, text="Nothing selected...")
+        initial_label.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(10, 10))
+
+        self.frame_selection_details = tkinter.Frame(master=self)
+        self.frame_selection_details.pack(side=tkinter.TOP, fill=tkinter.X)
+        self.initial_label = tkinter.ttk.Label(master=self.frame_selection_details, text="Nothing selected...")
+        self.initial_label.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10))
+
+        self.group_name_var = tkinter.StringVar(master=self.frame_controls, value="")
+        self.new_name_var = tkinter.StringVar(master=self.frame_controls, value="")
+
+        frame_overview = tkinter.Frame(master=self)
+        frame_overview.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
+
+        frame_list = tkinter.Frame(master=frame_overview)
+        frame_list.pack(side=tkinter.LEFT, fill=tkinter.Y, expand=True, anchor="w")
+
+        frame_charts = tkinter.Frame(master=frame_overview)
+        frame_charts.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
+
+
+        fig = plt.figure(figsize=(5, 4), dpi=100)
+        fig.subplots_adjust(left=0.18)
+        self.graph_axis = fig.add_subplot()
+
+        self.canvas = FigureCanvasTkAgg(fig, master=frame_charts)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(
+            side=tkinter.TOP, fill=tkinter.BOTH, expand=True
+        )
+
+        self.canvas_toolbar = NavigationToolbar2Tk(
+            self.canvas, frame_charts, pack_toolbar=False
+        )
+        self.canvas_toolbar.update()
+        self.canvas_toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X, padx=(10, 0))
+
+
+        self.tree_view_runs = tkinter.ttk.Treeview(master=frame_list, columns=["algorithm", "type", "id"], show="tree headings")
+        self.tree_view_runs.heading("algorithm", text="Algorithm")
+        self.tree_view_runs["displaycolumns"] = ("algorithm")
+        self.tree_view_runs.pack(fill=tkinter.BOTH, expand=True)
+
+        for number in range(30):
+            self.tree_view_runs.insert("", number, text=f"#{number}", values=["Ant System", 0, number], open=False)
+
+        self.tree_view_runs.bind("<<TreeviewSelect>>", self.on_selection_change)
+
+    def create_group(self):
+        group_name = self.group_name_var.get().strip()
+        if not self.tree_view_runs.selection() or not group_name:
+            return
+
+        self.group_name_var.set("")
+
+        top_most_item_index = self.tree_view_runs.index(self.tree_view_runs.selection()[0])
+        parent_id = self.tree_view_runs.insert("", top_most_item_index, text=group_name, values=["", 1], open=False)
+
+        for item in self.tree_view_runs.selection():
+            self.tree_view_runs.move(item, parent_id, tkinter.END)
+
+    def rename_object(self):
+        name = self.new_name_var.get().strip()
+        if not self.tree_view_runs.selection() or not name:
+            return
+
+        self.new_name_var.set(name)
+        self.tree_view_runs.item(self.tree_view_runs.selection()[0], text=name)
+
+    def display_object(self):
+        if not self.tree_view_runs.selection():
+            return
+
+    def delete_objects(self):
+        if not self.tree_view_runs.selection():
+            return
+
+        self.tree_view_runs.delete(self.tree_view_runs.selection()[0])
+
+    def clear_controls(self):
+        for c in self.frame_controls.winfo_children():
+            c.destroy()
+
+    def multiple_runs_controls(self):
+        self.frame_controls.columnconfigure(4, weight=1)
+
+        label_group_name = tkinter.Label(master=self.frame_controls, text="New group name")
+        label_group_name.grid(row=0, column=0, padx=(10, 10))
+
+        entry_group_name = tkinter.ttk.Entry(master=self.frame_controls, textvariable=self.group_name_var)
+        entry_group_name.grid(row=0, column=1, padx=(0, 10))
+
+        create_group_button = tkinter.ttk.Button(master=self.frame_controls, text="Create", command=self.create_group)
+        create_group_button.grid(row=0, column=2, padx=(0, 10))
+
+        button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
+        button_delete.grid(row=0, column=5, padx=(0, 10))
+
+    def multiple_object_controls(self):
+        self.frame_controls.columnconfigure(4, weight=1)
+
+        button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
+        button_delete.grid(row=0, column=5, padx=(0, 10))
+
+    def object_controls(self):
+        self.frame_controls.columnconfigure(4, weight=1)
+
+        label_name = tkinter.Label(master=self.frame_controls, text="Name")
+        label_name.grid(row=0, column=0, padx=(10, 10))
+
+        entry_name = tkinter.ttk.Entry(master=self.frame_controls, textvariable=self.new_name_var)
+        entry_name.grid(row=0, column=1, padx=(0, 10))
+
+        create_button = tkinter.ttk.Button(master=self.frame_controls, text="Rename", command=self.rename_object)
+        create_button.grid(row=0, column=2, padx=(0, 10))
+
+        button_display = tkinter.ttk.Button(master=self.frame_controls, text="Display", command=self.display_object)
+        button_display.grid(row=0, column=3, padx=(0, 10))
+
+        button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
+        button_delete.grid(row=0, column=5, padx=(0, 10))
+
+
+    def on_selection_change(self, *args, **kwargs):
+        selected_items_cnt = len(self.tree_view_runs.selection())
+        self.clear_controls()
+        if selected_items_cnt > 1:
+            for item in self.tree_view_runs.selection():
+                print(self.tree_view_runs.item(item))
+                if self.tree_view_runs.parent(item) or self.tree_view_runs.item(item)["values"][1]:
+                    return
+
+            self.multiple_runs_controls()
+        elif selected_items_cnt == 1:
+            item = self.tree_view_runs.item(self.tree_view_runs.selection()[0])
+            is_group = bool(item["values"][1])
+
+            if is_group:
+                self.new_name_var.set(item["text"])
+                self.object_controls()
+            else:
+                self.new_name_var.set(item["text"])
+                self.object_controls()
+
+
+
+
+
 class SettingsWindow(tkinter.Toplevel):
     def __init__(
         self,
@@ -165,7 +328,7 @@ class ConvergenceWindow(tkinter.Toplevel):
 
         frame_chart = tkinter.Frame(self)
 
-        fig = plt.figure(figsize=(5, 5), dpi=100)
+        fig = plt.figure(figsize=(5, 4), dpi=100)
         fig.subplots_adjust(left=0.18)
         self.graph_axis = fig.add_subplot()
 
@@ -367,7 +530,7 @@ class GUI:
         frame_chart = tkinter.Frame(frame_central_main_window)
         frame_chart.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
-        fig = plt.figure(figsize=(5, 5), dpi=100)
+        fig = plt.figure(figsize=(5, 4), dpi=100)
         self.graph_axis = fig.add_subplot()
 
         self.canvas = FigureCanvasTkAgg(fig, master=frame_chart)
@@ -488,6 +651,12 @@ class GUI:
         normal_style = tkinter.ttk.Style(master=label_frame_params)
         normal_style.configure("normal_style.TEntry", foreground=self.NORMAL_PARAM_COLOR)
 
+        delete_button_style = tkinter.ttk.Style(master=label_frame_params)
+        delete_button_style.configure(
+            "delete_button.TButton",
+            foreground="red",
+        )
+
     def build_toolbar(self):
         self.toolbar = tkinter.Menu(self.root)
         self.root.config(menu=self.toolbar)
@@ -515,6 +684,7 @@ class GUI:
         )
         self.toolbar.add_command(label="Log", command=self.open_window_log)
         self.toolbar.add_command(label="Convergence", command=self.open_window_convergence)
+        self.toolbar.add_command(label="History", command=self.open_window_history)
 
     def quit(self):
         if self.on_quit:
@@ -583,6 +753,11 @@ class GUI:
         self.convergence_window = ConvergenceWindow(
             self.root,
             self.algorithm_stats.best_len_history
+        )
+
+    def open_window_history(self):
+        history_window = HistoryWindow(
+            self.root,
         )
 
     def open_window_save_log(self):
