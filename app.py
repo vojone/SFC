@@ -12,33 +12,68 @@ import time
 
 import ant_algorithm as alg
 from gui import GUI
+from dataclasses import dataclass, field
 
 
 def get_seed():
     return numpy.random.randint(1, int(1e9))
 
 
+@dataclass
+class AlgorithmRun:
+    seed : int
+    algorithm : str | None = None
+    finished : bool = False
+    params : dict = field(default_factory=lambda: {})
+    total_time : float = 0.0
+    best_solution : tuple[list, float] = None
+    best_len_history : list[list[float]] = field(default_factory=lambda: [])
+
 
 class AlgorithmStats:
     def __init__(self):
-        self.best_len_history = []
-        self.total_time = 0.0
-        self.best_solution = None
-
-    def reset_total_time(self):
-        self.total_time = 0.0
-
-    def reset_best_len_history(self):
-        self.best_len_history = []
-
-    def reset_best(self):
-        self.best_solution = None
+        self.run = None
+        self.run_history = {}
+        self.run_groups = {}
 
     def add_best_solution(self, new_best_solution : float):
-        self.best_len_history.append(new_best_solution)
+        self.run.best_len_history.append(new_best_solution)
 
     def set_best(self, best_path : int, best_path_len : float):
-        self.best_solution = (best_path, best_path_len)
+        self.run.best_solution = (best_path, best_path_len)
+
+    def set_finished(self):
+        self.run.finished = True
+
+    def _generate_id(self, dictionary : dict):
+        existing_ids = list(dictionary.keys())
+        if not existing_ids:
+            return 1
+
+        existing_ids.sort()
+        return existing_ids[-1] + 1
+
+    def run_init(self, seed, algorithm, params):
+        self.run = AlgorithmRun(
+            seed=seed,
+            algorithm=algorithm,
+            params=params,
+        )
+
+    def store(self):
+        id = self._generate_id(self.run_history)
+        self.run_history[id] = self.run
+        return id
+
+    def make_group(self, run_ids : list[int]):
+        id = self._generate_id(self.run_groups)
+        self.run_groups[id] = run_ids
+        return id
+
+    def delete_group(self, id : int):
+        if id in self.run_groups:
+            del self.run_groups[id]
+
 
 class AlgorithmRunner:
     def __init__(
@@ -66,8 +101,6 @@ class AlgorithmRunner:
 
     def start(self):
         self.thread.start()
-        self.algorithm_stats.reset_best_len_history()
-        self.algorithm_stats.reset_total_time()
 
     def stop(self):
         self.run_event.clear()
@@ -102,12 +135,12 @@ class AlgorithmRunner:
             start_t = time.time()
             if self.run_event.is_set():
                 while self.run_event.is_set() and self.algorithm.make_step():
-                    self.algorithm_stats.total_time += time.time() - start_t
+                    self.algorithm_stats.run.total_time += time.time() - start_t
                     self.iteration_done_update()
                     start_t = time.time()
             else:
                 self.algorithm.make_step()
-                self.algorithm_stats.total_time += time.time() - start_t
+                self.algorithm_stats.run.total_time += time.time() - start_t
                 self.iteration_done_update()
 
             if not self.terminated_event.is_set():
@@ -147,8 +180,8 @@ class App:
 
         self.to_draw = {}
 
-        default_algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
-        self.algorithm_class = self.ALGORITHM_CLASSES[default_algorithm_name]
+        self.algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
+        self.algorithm_class = self.ALGORITHM_CLASSES[self.algorithm_name]
         self.current_params = {}
         self.total_iterations = 0
         self.seed = seed
@@ -183,8 +216,7 @@ class App:
             self.gui.set_algorithm_options(list(self.ALGORITHM_CLASSES.keys()))
             self.gui.var_algorithm.trace_add("write", self._change_algorithm)
 
-            default_algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
-            self.gui.update_params(self.gui.ALGORIHTM_PARAMS[default_algorithm_name])
+            self.gui.update_params(self.gui.ALGORIHTM_PARAMS[self.algorithm_name])
 
             self.gui.checkbox_pheromone.configure(command=self._toggle_pheromone)
             self.gui.checkbox_best_path.configure(command=self._toggle_best_path)
@@ -254,15 +286,15 @@ class App:
 
     def _on_algorithm_iteration_done(self):
         solution_update = False
-        if (len(self.algorithm_stats.best_len_history) == 0 or
-            self.algorithm.best_path_len != self.algorithm_stats.best_len_history[-1]):
+        if (len(self.algorithm_stats.run.best_len_history) == 0 or
+            self.algorithm.best_path_len != self.algorithm_stats.run.best_len_history[-1]):
             solution_update = True
 
-        self.algorithm_stats.add_best_solution(self.algorithm.best_path_len)
+        self.algorithm_stats.add_best_solution(float(self.algorithm.best_path_len))
         if self.has_gui:
             self.gui.update_speed(
                 self.algorithm.current_iteration,
-                self.algorithm_stats.total_time
+                self.algorithm_stats.run.total_time
             )
             self.gui.update_best_path(self.algorithm.best_path_len)
             self.gui.var_iterations.set(self.algorithm.current_iteration)
@@ -272,16 +304,17 @@ class App:
             if self.has_gui and self.gui.var_continuous_updates.get():
                 self.gui.redraw_canvas(self.to_draw)
                 if self.gui.convergence_window is not None:
-                    self.gui.convergence_window.draw(self.algorithm_stats.best_len_history)
+                    self.gui.convergence_window.draw(self.algorithm_stats.run.best_len_history)
 
     def _on_algorithm_done(self, continues: bool):
         self.algorithm_stats.set_best(self.algorithm.best_path, self.algorithm.best_path_len)
 
         if self.algorithm.is_finished:
+            self.algorithm_stats.set_finished()
             logging.info(
                 f"Finished in it={self.algorithm.current_iteration}, best: "
-                f"len={self.algorithm_stats.best_solution[1]:g}, "
-                f"path={self.algorithm_stats.best_solution[0]}"
+                f"len={self.algorithm_stats.run.best_solution[1]:g}, "
+                f"path={self.algorithm_stats.run.best_solution[0]}"
             )
 
         if self.has_gui:
@@ -289,7 +322,7 @@ class App:
             self.gui.button_stop["state"] = "disabled"
             if self.gui.convergence_window is not None:
                 self.gui.convergence_window.clear_canvas()
-                self.gui.convergence_window.draw(self.algorithm_stats.best_len_history)
+                self.gui.convergence_window.draw(self.algorithm_stats.run.best_len_history)
 
             if not continues:
                 self.gui.button_step["state"] = "disabled"
@@ -463,6 +496,7 @@ class App:
         self.reset()
 
     def set_algorithm(self, algorithm_name: str):
+        self.algorithm_name = algorithm_name
         self.algorithm_class = self.ALGORITHM_CLASSES[algorithm_name]
         if self.has_gui:
             self.gui.update_params(self.gui.ALGORIHTM_PARAMS[algorithm_name])
@@ -478,6 +512,9 @@ class App:
 
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
             self.algorithm_runner.terminate()
+        if self.algorithm_stats.run is not None:
+            self.algorithm_stats.store()
+            print(json.dumps(self.algorithm_stats.run_history, default=vars))
         if self.has_gui:
             self.gui.clear_log()
             self.gui.disable_speed_label()
@@ -486,7 +523,6 @@ class App:
                 self.gui.var_seed.set(self.seed)
 
         numpy.random.seed(self.seed)
-        self.algorithm_stats.reset_best()
         self.algorithm_init()
         if self.has_gui:
             self.gui.clear_convergence()
@@ -538,6 +574,7 @@ class App:
                 stored_params_str += f", {p}={self.current_params[p]}"
             logging.info(stored_params_str)
 
+        self.algorithm_stats.run_init(self.seed, self.algorithm, self.current_params)
         self.algorithm = self.algorithm_class(
             alg.AntAlgorithm.tuples_to_places(self.data, self.data_names),
             **self.current_params,
@@ -557,10 +594,12 @@ class App:
         self.algorithm_runner.start()
 
     def draw_best_path(self):
-        if not self.has_gui or self.algorithm_stats.best_solution is None:
+        if (not self.has_gui or
+            self.algorithm_stats.run is None or
+            self.algorithm_stats.run.best_solution is None):
             return
 
-        best_path = self.algorithm_stats.best_solution[0]
+        best_path = self.algorithm_stats.run.best_solution[0]
         self.gui.draw_path(
             best_path,
             self.algorithm.map.places,
