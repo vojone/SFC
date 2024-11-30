@@ -7,14 +7,89 @@ import csv
 import logging
 import numpy
 import numpy.typing
+import time
+import threading
 
 import ant_algorithm as alg
 from gui import GUI
-from algorithm_runner import AlgorithmStats, AlgorithmRunner
+from algorithm_stats import AlgorithmStats
 
 
 def get_seed():
     return numpy.random.randint(1, int(1e9))
+
+
+class AlgorithmRunner:
+    def __init__(
+        self,
+        algorithm: alg.AntAlgorithm,
+        gui: GUI | None,
+        algorithm_stats: AlgorithmStats,
+        on_algorithm_done,
+        iteration_done_update
+    ):
+        self.algorithm = algorithm
+        self.gui = gui
+        self.thread = threading.Thread(target=self.runner)
+        self.sleep_event = threading.Event()
+        self.finish_task_event = threading.Event()
+        self.run_event = threading.Event()
+        self.terminated_event = threading.Event()
+        self.on_algorithm_done = on_algorithm_done
+        self.iteration_done_update = iteration_done_update
+        self.algorithm_stats = algorithm_stats
+
+    @property
+    def is_alive(self):
+        return self.thread.is_alive()
+
+    def start(self):
+        self.thread.start()
+
+    def stop(self):
+        self.run_event.clear()
+
+    def make_step(self):
+        self.sleep_event.set()
+
+    def run(self):
+        self.run_event.set()
+        self.sleep_event.set()
+
+    def wait_for_result(self):
+        self.finish_task_event.wait()
+        self.finish_task_event.clear()
+
+    def terminate(self):
+        self.run_event.clear()
+        self.terminated_event.set()
+        self.sleep_event.set()
+        while self.thread.is_alive():
+            self.gui.root.update()
+
+        self.thread.join()
+
+    def runner(self):
+        while not self.terminated_event.is_set():
+            self.sleep_event.wait()
+            self.sleep_event.clear()
+            if self.terminated_event.is_set():
+                break
+
+            start_t = time.time()
+            if self.run_event.is_set():
+                while self.run_event.is_set() and self.algorithm.make_step():
+                    self.algorithm_stats.run.total_time += time.time() - start_t
+                    self.iteration_done_update()
+                    start_t = time.time()
+            else:
+                self.algorithm.make_step()
+                self.algorithm_stats.run.total_time += time.time() - start_t
+                self.iteration_done_update()
+
+            if not self.terminated_event.is_set():
+                self.on_algorithm_done(not self.algorithm.is_finished)
+            self.finish_task_event.set()
 
 
 class App:
