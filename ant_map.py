@@ -1,13 +1,23 @@
+# ant_map.py
+# Contains classes representing the space where ants try to find the best path
+# Author: Vojtěch Dvořák (xdvora3o)
+
 import numpy
 import numpy.typing
 from scipy.spatial import distance_matrix
 
 class Place:
+    """Representation of the one place in the map."""
+
     def __init__(self, coords: tuple[float], name: str | None = None):
         self.coords = coords
         self.name = name
 
 class Map:
+    """Set of places fully connected with each other with some amount of
+    pheromone on the each path.
+    """
+
     def __init__(self, places: list[Place], initial_pheromone : float = 1.0, pheronomone_vaporization : float = 0.2):
         self.places : list[Place] = places
 
