@@ -338,9 +338,9 @@ class HistoryWindow(SubWindow):
                 selection_details_str += f"Best len: {run.best_solution[1]:g}, "
             if run.best_len_history:
                 selection_details_str += f"Iterations done: {len(run.best_len_history)}, "
+            selection_details_str += f"Time: {run.total_time:g} s, "
             selection_details_str += "Done" if run.finished else "NOT finished"
-            selection_details_str += ", "
-            selection_details_str += f"seed={run.seed}\n"
+            selection_details_str += f"\nseed={run.seed}, "
             for i, p in enumerate(run.params):
                 if i:
                     selection_details_str += ", "
@@ -628,7 +628,7 @@ class SettingsWindow(SubWindow):
     ):
         super().__init__(master, on_window_close, **kwargs)
 
-        self.title(*self.TITLE)
+        self.title(self.TITLE)
         self.transient(master)
         self.minsize(*self.MIN_SIZE)
 
@@ -735,7 +735,7 @@ class ConvergenceWindow(SubWindow):
         super().__init__(master, on_window_close, **kwargs)
         self.best_path_history = best_path_history
 
-        self.title(*self.TITLE)
+        self.title(self.TITLE)
         self.transient(master)
         self.minsize(*self.MIN_SIZE)
 
@@ -864,7 +864,7 @@ class GUI:
 
     def __init__(self, algorithm_stats: AlgorithmStats, logger : logging.Logger = None):
         self.root = tkinter.Tk()
-        self.root.wm_title(*self.MAIN_WINDOW_TITLE)
+        self.root.wm_title(self.MAIN_WINDOW_TITLE)
         self.root.minsize(*self.MAIN_WINDOW_MIN_SIZE)
 
         # Build components of the main window
