@@ -46,6 +46,11 @@ def create_checkbox(root, label, variable) -> tkinter.Checkbutton:
     )
 
 
+def remove_traces(var : tkinter.Variable):
+    for mode, cb_name in var.trace_info():
+        var.trace_remove(mode, cb_name)
+
+
 class SubWindow(tkinter.Toplevel):
     def __init__(
         self,
@@ -300,18 +305,28 @@ class HistoryWindow(SubWindow):
         self.update_tree_view()
 
     def clear_controls(self):
+        remove_traces(self.group_name_var)
+        remove_traces(self.new_name_var)
         for c in self.frame_controls.winfo_children():
             c.destroy()
 
     def multiple_runs_controls(self):
+        def group_name_modified_cb(*args, **kwargs):
+            if self.group_name_var.get().strip():
+                create_group_button["state"] = "normal"
+            else:
+                create_group_button["state"] = "disabled"
+
         label_group_name = tkinter.Label(master=self.frame_controls, text="New group name")
         label_group_name.grid(row=0, column=0, padx=(10, 10))
 
         entry_group_name = tkinter.ttk.Entry(master=self.frame_controls, textvariable=self.group_name_var)
         entry_group_name.grid(row=0, column=1, padx=(0, 10))
+        self.group_name_var.trace_add("write", group_name_modified_cb)
 
         create_group_button = tkinter.ttk.Button(master=self.frame_controls, text="Create", command=self.create_group)
         create_group_button.grid(row=0, column=2, padx=(0, 10))
+        create_group_button["state"] = "disabled"
 
         button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
         button_delete.grid(row=0, column=6, padx=(0, 10))
@@ -321,14 +336,22 @@ class HistoryWindow(SubWindow):
         button_delete.grid(row=0, column=6, padx=(0, 10))
 
     def object_controls(self, is_group : bool = False):
+        def name_modified_cb(*args, **kwargs):
+            if self.new_name_var.get().strip():
+                rename_button["state"] = "normal"
+            else:
+                rename_button["state"] = "disabled"
+
         label_name = tkinter.Label(master=self.frame_controls, text="Name")
         label_name.grid(row=0, column=0, padx=(10, 10))
 
         entry_name = tkinter.ttk.Entry(master=self.frame_controls, textvariable=self.new_name_var)
         entry_name.grid(row=0, column=1, padx=(0, 10))
+        self.new_name_var.trace_add("write", name_modified_cb)
 
-        create_button = tkinter.ttk.Button(master=self.frame_controls, text="Rename", command=self.rename_object)
-        create_button.grid(row=0, column=2, padx=(0, 10))
+        rename_button = tkinter.ttk.Button(master=self.frame_controls, text="Rename", command=self.rename_object)
+        rename_button.grid(row=0, column=2, padx=(0, 10))
+        rename_button["state"] = "disabled"
 
         button_display = tkinter.ttk.Button(master=self.frame_controls, text="Display", command=self.display_object)
         button_display.grid(row=0, column=3, padx=(0, 10))
