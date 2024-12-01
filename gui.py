@@ -186,7 +186,7 @@ class HistoryWindow(SubWindow):
 
 
         fig = plt.figure(figsize=(5, 4), dpi=100)
-        fig.subplots_adjust(left=0.1)
+        fig.subplots_adjust(left=0.15)
         self.graph_axis = fig.add_subplot()
 
         self.canvas = FigureCanvasTkAgg(fig, master=frame_charts)
@@ -889,10 +889,10 @@ class GUI:
         self.on_show_pheromone_amount = None
 
         # References to subwindows
-        self.convergence_window: SubWindow | None = None
-        self.logging_widget: SubWindow | None = None
-        self.settings_window: SubWindow | None = None
-        self.history_window: SubWindow | None = None
+        self.convergence_window: ConvergenceWindow | None = None
+        self.logging_widget: tkinter.Widget | None = None
+        self.settings_window: SettingsWindow | None = None
+        self.history_window: HistoryWindow | None = None
 
         self.algorithm_stats = algorithm_stats
 
@@ -1172,7 +1172,7 @@ class GUI:
         """Clear canvas in the convergence window, if it is openede."""
 
         if self.convergence_window:
-            self.convergence_window.clear()
+            self.convergence_window.clear_canvas()
 
 
     def disable_speed_label(self):
@@ -1253,7 +1253,8 @@ class GUI:
             self.convergence_window.destroy()
             self.convergence_window = None
 
-        if self.convergence_window is not None:
+        if (self.convergence_window is not None or
+            self.algorithm_stats.run is None):
             return
         self.convergence_window = ConvergenceWindow(
             self.root,
