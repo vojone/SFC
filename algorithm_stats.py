@@ -1,7 +1,13 @@
+# algorithm_stats.py
+# Contains classes for collecting the results of execution of ant algorithms
+# Author: Vojtěch Dvořák (xdvora3o)
+
 from dataclasses import dataclass, field
 
 @dataclass
 class AlgorithmRun:
+    """Stores the relevat data from one execution of ant algorithm."""
+
     seed : int
     name : str | None = None
     algorithm : str | None = None
@@ -14,14 +20,28 @@ class AlgorithmRun:
 
 @dataclass
 class RunGroup:
+    """Groups more executions together to get aggregated results."""
+
     name : str | None = None
     runs : list[int] = field(default_factory=lambda: [])
 
 class AlgorithmStats:
+    """Class for collecting the results of the current execution and for
+    storing the data of the previous executions.
+    """
+
     def __init__(self):
         self.run = None
         self.run_history = {}
         self.run_groups = {}
+
+    def _generate_id(self, dictionary : dict):
+        existing_ids = list(dictionary.keys())
+        if not existing_ids:
+            return 1
+
+        existing_ids.sort()
+        return existing_ids[-1] + 1
 
     def add_best_solution(self, new_best_solution : float):
         self.run.best_len_history.append(new_best_solution)
@@ -31,14 +51,6 @@ class AlgorithmStats:
 
     def set_finished(self):
         self.run.finished = True
-
-    def _generate_id(self, dictionary : dict):
-        existing_ids = list(dictionary.keys())
-        if not existing_ids:
-            return 1
-
-        existing_ids.sort()
-        return existing_ids[-1] + 1
 
     def run_init(self, seed, algorithm, params):
         self.run = AlgorithmRun(
