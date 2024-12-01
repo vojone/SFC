@@ -1,0 +1,9 @@
+{
+    "algorithm": "Ant System",
+    "iterations": 200,
+    "ant_amount": 20,
+    "pheronome_w": 1.0,
+    "visibility_w": 1.0,
+    "vaporization": 0.2,
+    "seed": 272555247
+}
