@@ -123,19 +123,17 @@ class HistoryWindow(SubWindow):
 
         self.toolbar = tkinter.Menu(self)
         self.config(menu=self.toolbar)
-        self.toolbar.add_command(label="Load History", command=self.load)
-        self.toolbar.add_command(label="Save History", command=self.save)
+        self.toolbar.add_command(label="Load", command=self.load)
+        self.toolbar.add_command(label="Save", command=self.save)
 
-        self.frame_controls = tkinter.Frame(master=self)
+        self.frame_controls = tkinter.Frame(master=self, height=25)
         self.frame_controls.pack(side=tkinter.TOP, fill=tkinter.X, pady=(10, 10))
         self.frame_controls.columnconfigure(4, weight=1)
-        initial_label = tkinter.ttk.Label(master=self.frame_controls, text="Nothing selected...")
-        initial_label.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(10, 10))
 
-        self.frame_selection_details = tkinter.Frame(master=self)
-        self.frame_selection_details.pack(side=tkinter.TOP, fill=tkinter.X)
-        self.initial_label = tkinter.ttk.Label(master=self.frame_selection_details, text="")
-        self.initial_label.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10))
+        frame_selection_details = tkinter.Frame(master=self)
+        frame_selection_details.pack(side=tkinter.TOP, fill=tkinter.X)
+        self.label_selection_details = tkinter.ttk.Label(master=frame_selection_details, text="\n")
+        self.label_selection_details.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10))
 
         self.group_name_var = tkinter.StringVar(master=self.frame_controls, value="")
         self.new_name_var = tkinter.StringVar(master=self.frame_controls, value="")
@@ -305,6 +303,7 @@ class HistoryWindow(SubWindow):
         self.update_tree_view()
 
     def clear_controls(self):
+        self.label_selection_details.configure(text="\n")
         remove_traces(self.group_name_var)
         remove_traces(self.new_name_var)
         for c in self.frame_controls.winfo_children():
@@ -331,11 +330,41 @@ class HistoryWindow(SubWindow):
         button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
         button_delete.grid(row=0, column=6, padx=(0, 10))
 
+        selection_details_str = f"{len(self.tree_view_runs.selection())} runs selected\n"
+        self.label_selection_details.configure(text=selection_details_str)
+
     def multiple_object_controls(self):
         button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
         button_delete.grid(row=0, column=6, padx=(0, 10))
 
-    def object_controls(self, is_group : bool = False):
+    def fill_object_selection_details(self, object_id : int, is_group : bool = False):
+        selection_details_str = ""
+        if is_group:
+            group = self.algorithm_stats.run_groups[object_id]
+            runs = self.algorithm_stats.run_history
+            number_of_runs = len(group.runs)
+            median_best_len = numpy.median(
+                numpy.array([ runs[r].best_solution[1] for r in group.runs if runs[r].best_solution ])
+            )
+            selection_details_str = f"Contains: {number_of_runs} runs\nMedian len: {median_best_len}"
+        else:
+            run = self.algorithm_stats.run_history[object_id]
+            selection_details_str = f"{run.algorithm}, "
+            if run.best_solution:
+                selection_details_str += f"Best len: {run.best_solution[1]:g}, "
+            if run.best_len_history:
+                selection_details_str += f"Iterations done: {len(run.best_len_history)}, "
+            selection_details_str += "Done" if run.finished else "NOT finished"
+            selection_details_str += ", "
+            selection_details_str += f"seed={run.seed}\n"
+            for i, p in enumerate(run.params):
+                if i:
+                    selection_details_str += ", "
+                selection_details_str += f"{p}={run.params[p]}"
+
+        self.label_selection_details.configure(text=selection_details_str)
+
+    def object_controls(self, object_id : int, is_group : bool = False):
         def name_modified_cb(*args, **kwargs):
             if self.new_name_var.get().strip():
                 rename_button["state"] = "normal"
@@ -363,6 +392,7 @@ class HistoryWindow(SubWindow):
         button_delete = tkinter.ttk.Button(master=self.frame_controls, text="Delete", command=self.delete_objects, style="delete_button.TButton")
         button_delete.grid(row=0, column=6, padx=(0, 10))
 
+        self.fill_object_selection_details(object_id, is_group)
 
     def on_selection_change(self, *args, **kwargs):
         selected_items_cnt = len(self.tree_view_runs.selection())
@@ -377,12 +407,12 @@ class HistoryWindow(SubWindow):
             item = self.tree_view_runs.item(self.tree_view_runs.selection()[0])
             is_group = bool(item["values"][1])
             self.new_name_var.set(item["text"])
-            self.object_controls(is_group)
+            self.object_controls(item["values"][2], is_group)
 
     def load(self):
         filename = tkinter.filedialog.askopenfilename(
             master=self,
-            title="Select history file with data",
+            title="Select History File",
             filetypes=(
                 ("JSON files", "*.json*"),
             )
@@ -415,7 +445,7 @@ class HistoryWindow(SubWindow):
         timestamp = datetime.now().strftime("%m-%d-%H%M%S")
         ifilename = f"AntAlgorithms-History-{timestamp}.json"
         filename = tkinter.filedialog.asksaveasfilename(
-            confirmoverwrite=True, title="Save Log As", initialfile=ifilename
+            confirmoverwrite=True, title="Save History As", initialfile=ifilename
         )
 
         if not filename:
