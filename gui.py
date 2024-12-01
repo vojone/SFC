@@ -1175,9 +1175,9 @@ class GUI:
             master=self.root,
             title="Select input file with data",
             filetypes=(
+                ("All files", "*.*"),
                 ("JSON files", "*.json*"),
                 ("CSV files", "*.csv*"),
-                ("All files", "*.*"),
             )
         )
 
