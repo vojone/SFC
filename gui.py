@@ -4,12 +4,13 @@ import tkinter.scrolledtext
 import tkinter.ttk
 import matplotlib.pyplot as plt
 import numpy
+import json
 import logging
 
 from datetime import datetime
 from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk, FigureCanvasTkAgg
 
-from algorithm_stats import AlgorithmStats
+from algorithm_stats import AlgorithmStats, AlgorithmRun, RunGroup
 
 
 def positive_integer(x: str):
@@ -115,6 +116,10 @@ class HistoryWindow(SubWindow):
         self.minsize(400, 200)
         self.algorithm_stats = algorithm_stats
 
+        self.toolbar = tkinter.Menu(self)
+        self.config(menu=self.toolbar)
+        self.toolbar.add_command(label="Load History", command=self.load)
+        self.toolbar.add_command(label="Save History", command=self.save)
 
         self.frame_controls = tkinter.Frame(master=self)
         self.frame_controls.pack(side=tkinter.TOP, fill=tkinter.X, pady=(10, 10))
@@ -141,7 +146,7 @@ class HistoryWindow(SubWindow):
 
 
         fig = plt.figure(figsize=(5, 4), dpi=100)
-        fig.subplots_adjust(left=0.18)
+        fig.subplots_adjust(left=0.1)
         self.graph_axis = fig.add_subplot()
 
         self.canvas = FigureCanvasTkAgg(fig, master=frame_charts)
@@ -351,6 +356,51 @@ class HistoryWindow(SubWindow):
             self.new_name_var.set(item["text"])
             self.object_controls(is_group)
 
+    def load(self):
+        filename = tkinter.filedialog.askopenfilename(
+            master=self,
+            title="Select history file with data",
+            filetypes=(
+                ("JSON files", "*.json*"),
+            )
+        )
+        if not filename:
+            return
+        try:
+            fp = open(filename, mode="r")
+            history_json = json.loads(fp.read())
+        except Exception as e:
+            logging.error(f"Unable to open file with history: {e}")
+            return
+
+        run_history = history_json["run_history"]
+        self.algorithm_stats.run_history.clear()
+        for run_id in run_history:
+            self.algorithm_stats.run_history[int(run_id)] = AlgorithmRun(
+                **run_history[run_id]
+            )
+
+        run_groups = history_json["run_groups"]
+        for group_id in run_groups:
+            self.algorithm_stats.run_groups[int(group_id)] = RunGroup(
+                **run_groups[group_id]
+            )
+
+        self.update_tree_view()
+
+    def save(self):
+        timestamp = datetime.now().strftime("%m-%d-%H%M%S")
+        ifilename = f"AntAlgorithms-History-{timestamp}.json"
+        filename = tkinter.filedialog.asksaveasfilename(
+            confirmoverwrite=True, title="Save Log As", initialfile=ifilename
+        )
+
+        if not filename:
+            return
+
+        fp = open(filename, mode="w")
+        fp.write(json.dumps(self.algorithm_stats, default=vars, indent=4))
+        fp.close()
 
 
 
