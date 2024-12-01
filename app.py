@@ -12,11 +12,17 @@ import threading
 
 import ant_algorithm as alg
 from gui import GUI
+from enum import Enum
 from algorithm_stats import AlgorithmStats
 
 
 def get_seed():
     return numpy.random.randint(1, int(1e9))
+
+
+class RunMode(Enum):
+    STEP = 0
+    RUN = 1
 
 
 class AlgorithmRunner:
@@ -126,6 +132,7 @@ class App:
 
         self.algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
         self.algorithm_class = self.ALGORITHM_CLASSES[self.algorithm_name]
+        self.run_mode: RunMode | None = None
         self.current_params = {}
         self.total_iterations = 0
         self.seed = seed
@@ -225,9 +232,9 @@ class App:
     def _change_algorithm(self, *args, **kwargs):
         algorithm_name = self.gui.var_algorithm.get()
         self.set_algorithm(algorithm_name)
+        logging.info(f"Algorithm changed to {self.gui.var_algorithm.get()}")
         self.save_params()
         self.reset()
-        print(f"Algorithm changed to {self.gui.var_algorithm.get()}")
 
     def _on_algorithm_iteration_done(self):
         solution_update = False
@@ -281,7 +288,7 @@ class App:
                 self.gui.button_step["state"] = "disabled"
                 self.gui.button_run["state"] = "disabled"
                 self.gui.set_finished_status()
-                if self.remaining_runs:
+                if self.run_mode == RunMode.RUN and self.remaining_runs:
                     self.gui.root.after(0, auto_rerun)
 
     def _stop(self):
@@ -308,6 +315,7 @@ class App:
         if self.algorithm.is_finished:
             return
 
+        self.run_mode = RunMode.STEP
         self.gui.set_running_status()
         self.algorithm_runner.make_step()
         self.run_jobid = self.gui.root.after(STEP_BUTTON_RUN_MS, self._run)
@@ -316,6 +324,7 @@ class App:
         if self.algorithm_runner is None:
             return
 
+        self.run_mode = RunMode.RUN
         self.remaining_runs = self.gui.var_number_of_runs.get()
         self._run()
 
@@ -467,7 +476,10 @@ class App:
 
         if self.algorithm_runner is not None and self.algorithm_runner.is_alive:
             self.algorithm_runner.terminate()
-        if self.algorithm_stats.run is not None and not self.algorithm.is_finished:
+
+        not_finished = self.algorithm and not self.algorithm.is_finished
+        has_any_data = self.algorithm and self.algorithm.current_iteration > 0
+        if self.algorithm_stats.run is not None and not_finished and has_any_data:
             self.algorithm_stats.store()
             if self.has_gui:
                 self.gui.update_history()
