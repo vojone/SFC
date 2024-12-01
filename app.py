@@ -129,6 +129,7 @@ class App:
         self.current_params = {}
         self.total_iterations = 0
         self.seed = seed
+        self.remaining_runs = 0
 
         if has_gui:
             logger = None
@@ -147,7 +148,7 @@ class App:
                 else "No file opened"
             )
             self.gui.button_open_file.configure(command=self._open_file)
-            self.gui.button_run.configure(command=self._run)
+            self.gui.button_run.configure(command=self._user_run)
             self.gui.button_stop.configure(command=self._stop)
             self.gui.button_stop["state"] = "disabled"
             self.gui.button_save.configure(command=self._save)
@@ -250,6 +251,10 @@ class App:
                 self.gui.update_history(self.algorithm_stats.run.best_len_history)
 
     def _on_algorithm_done(self, continues: bool):
+        def auto_rerun():
+            self.reset()
+            self._run()
+
         self.algorithm_stats.set_best(self.algorithm.best_path, self.algorithm.best_path_len)
 
         if self.algorithm.is_finished:
@@ -267,14 +272,17 @@ class App:
             self.gui.update_convergence(self.algorithm_stats.run.best_len_history)
             self.gui.update_history()
 
-            if not continues:
-                self.gui.button_step["state"] = "disabled"
-                self.gui.button_run["state"] = "disabled"
-                self.gui.set_finished_status()
-            else:
+            if continues:
                 self.gui.button_step["state"] = "normal"
                 self.gui.button_run["state"] = "normal"
                 self.gui.set_paused_status()
+            else:
+                self.remaining_runs -= 1
+                self.gui.button_step["state"] = "disabled"
+                self.gui.button_run["state"] = "disabled"
+                self.gui.set_finished_status()
+                if self.remaining_runs:
+                    self.gui.root.after(0, auto_rerun)
 
     def _stop(self):
         if self.algorithm_runner is not None:
@@ -304,10 +312,14 @@ class App:
         self.algorithm_runner.make_step()
         self.run_jobid = self.gui.root.after(STEP_BUTTON_RUN_MS, self._run)
 
-    def _run(self):
+    def _user_run(self):
         if self.algorithm_runner is None:
             return
 
+        self.remaining_runs = self.gui.var_number_of_runs.get()
+        self._run()
+
+    def _run(self):
         self.gui.set_running_status()
         self.algorithm_runner.run()
         self.gui.button_stop["state"] = "enabled"
