@@ -416,6 +416,7 @@ class SettingsWindow(SubWindow):
         var_show_distances : tkinter.IntVar,
         var_show_pheromone_amount : tkinter.IntVar,
         var_continuous_updates : tkinter.IntVar,
+        var_number_of_runs : tkinter.IntVar,
         **kwargs
     ):
         super().__init__(master, on_window_close, **kwargs)
@@ -445,6 +446,18 @@ class SettingsWindow(SubWindow):
         )
         self.checkbox_fix_seed.pack(side=tkinter.TOP, padx=(10, 10), pady=(10, 10), anchor="w")
 
+        label_run_settings = tkinter.ttk.Label(master=self, text="Run options")
+        label_frame_run_settings = tkinter.ttk.Labelframe(master=self, labelwidget=label_run_settings)
+        label_frame_run_settings.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10), pady=(0, 10))
+
+        label_run_count = tkinter.Label(
+            master=label_frame_run_settings, text="Runs"
+        )
+        label_run_count.grid(row=0, column=1, padx=(10, 10), pady=(10, 10))
+        entry_run_count = tkinter.ttk.Entry(
+            master=label_frame_run_settings, textvariable=var_number_of_runs
+        )
+        entry_run_count.grid(row=0, column=2, padx=(10, 10), pady=(10, 10))
 
         label_display_settings = tkinter.Label(master=self, text="View")
         label_frame_display_settings = tkinter.ttk.LabelFrame(master=self, labelwidget=label_display_settings)
@@ -605,6 +618,7 @@ class GUI:
         self.var_show_distances = tkinter.IntVar(master=self.root, value=0)
         self.var_show_pheromone_amount = tkinter.IntVar(master=self.root, value=0)
         self.var_continuous_updates = tkinter.IntVar(master=self.root, value=0)
+        self.var_number_of_runs = tkinter.IntVar(master=self.root, value=1)
 
         self.on_use_custom_seed = None
         self.on_show_place_names = None
@@ -943,6 +957,7 @@ class GUI:
             var_show_distances=self.var_show_distances,
             var_show_pheromone_amount=self.var_show_pheromone_amount,
             var_continuous_updates=self.var_continuous_updates,
+            var_number_of_runs=self.var_number_of_runs,
         )
 
         if self.on_use_custom_seed is not None:
