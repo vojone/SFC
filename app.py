@@ -247,8 +247,7 @@ class App:
             self.algorithm_stats.set_best(self.algorithm.best_path, self.algorithm.best_path_len)
             if self.has_gui and self.gui.var_continuous_updates.get():
                 self.gui.redraw_canvas(self.to_draw)
-                if self.gui.convergence_window is not None:
-                    self.gui.convergence_window.draw(self.algorithm_stats.run.best_len_history)
+                self.gui.update_history(self.algorithm_stats.run.best_len_history)
 
     def _on_algorithm_done(self, continues: bool):
         self.algorithm_stats.set_best(self.algorithm.best_path, self.algorithm.best_path_len)
@@ -265,12 +264,8 @@ class App:
         if self.has_gui:
             self.gui.redraw_canvas(self.to_draw)
             self.gui.button_stop["state"] = "disabled"
-            if self.gui.convergence_window is not None:
-                self.gui.convergence_window.clear_canvas()
-                self.gui.convergence_window.draw(self.algorithm_stats.run.best_len_history)
-
-            if self.gui.history_window is not None:
-                self.gui.update_history()
+            self.gui.update_convergence(self.algorithm_stats.run.best_len_history)
+            self.gui.update_history()
 
             if not continues:
                 self.gui.button_step["state"] = "disabled"
@@ -462,7 +457,6 @@ class App:
             self.algorithm_runner.terminate()
         if self.algorithm_stats.run is not None and not self.algorithm.is_finished:
             self.algorithm_stats.store()
-            print(json.dumps(self.algorithm_stats.run_history, default=vars))
             if self.has_gui:
                 self.gui.update_history()
 

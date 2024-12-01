@@ -44,7 +44,20 @@ def create_checkbox(root, label, variable) -> tkinter.Checkbutton:
         offvalue=0,
     )
 
-class LogWindow(tkinter.Toplevel):
+
+class SubWindow(tkinter.Toplevel):
+    def __init__(
+        self,
+        master,
+        on_window_close,
+        **kwargs,
+    ):
+        super().__init__(master=master, **kwargs)
+        if on_window_close is not None:
+            self.protocol("WM_DELETE_WINDOW", on_window_close)
+
+
+class LogWindow(SubWindow):
     def __init__(
         self,
         master,
@@ -54,14 +67,11 @@ class LogWindow(tkinter.Toplevel):
         log_content : str = "",
         **kwargs
     ):
-        super().__init__(master=master, **kwargs)
+        super().__init__(master, on_window_close, **kwargs)
 
         self.title("Ant Algorithms - Log")
         self.transient(master)
         self.minsize(400, 200)
-
-        if on_window_close is not None:
-            self.protocol("WM_DELETE_WINDOW", on_window_close)
 
         self.logging_widget = tkinter.scrolledtext.ScrolledText(master=self)
         self.logging_widget.config(spacing3=10)
@@ -88,14 +98,15 @@ class LogWindow(tkinter.Toplevel):
         self.logging_widget.pack(expand=True, side=tkinter.TOP, fill=tkinter.BOTH)
 
 
-class HistoryWindow(tkinter.Toplevel):
+class HistoryWindow(SubWindow):
     def __init__(
         self,
         master,
+        on_window_close,
         algorithm_stats : AlgorithmStats,
         **kwargs
     ):
-        super().__init__(master=master, **kwargs)
+        super().__init__(master, on_window_close, **kwargs)
 
         self.displayed_objects = {}
 
@@ -344,10 +355,11 @@ class HistoryWindow(tkinter.Toplevel):
 
 
 
-class SettingsWindow(tkinter.Toplevel):
+class SettingsWindow(SubWindow):
     def __init__(
         self,
         master,
+        on_window_close,
         var_seed : tkinter.StringVar,
         var_fixed_seed : tkinter.IntVar,
         var_show_place_names : tkinter.IntVar,
@@ -356,7 +368,7 @@ class SettingsWindow(tkinter.Toplevel):
         var_continuous_updates : tkinter.IntVar,
         **kwargs
     ):
-        super().__init__(master=master, **kwargs)
+        super().__init__(master, on_window_close, **kwargs)
 
         self.title("Ant Algorithms - Advanced settings")
         self.transient(master)
@@ -407,14 +419,15 @@ class SettingsWindow(tkinter.Toplevel):
         )
         checkbox_continuous_updates.pack(side=tkinter.TOP, padx=(10, 10), pady=(0, 10), anchor="w")
 
-class ConvergenceWindow(tkinter.Toplevel):
+class ConvergenceWindow(SubWindow):
     def __init__(
         self,
         master,
+        on_window_close,
         best_path_history,
         **kwargs
     ):
-        super().__init__(master=master, **kwargs)
+        super().__init__(master, on_window_close, **kwargs)
         self.best_path_history = best_path_history
 
         self.title("Ant Algorithms - Convergence")
@@ -549,8 +562,10 @@ class GUI:
         self.on_show_pheromone_amount = None
 
         self.convergence_window = None
-
         self.logging_widget = None
+        self.settings_window = None
+        self.history_window = None
+
         self.log = []
         self.algorithm_stats = algorithm_stats
         if logger is not None:
@@ -825,6 +840,8 @@ class GUI:
             self.logging_widget = None
             log_window.destroy()
 
+        if self.logging_widget is not None:
+            return
         log_window = LogWindow(
             master=self.root,
             on_window_close=on_window_close,
@@ -835,19 +852,65 @@ class GUI:
         self.logging_widget = log_window.logging_widget
 
     def open_window_convergence(self):
+        def on_window_close():
+            self.convergence_window.destroy()
+            self.convergence_window = None
+
+        if self.convergence_window is not None:
+            return
         self.convergence_window = ConvergenceWindow(
             self.root,
-            self.algorithm_stats.best_len_history
+            on_window_close,
+            self.algorithm_stats.run.best_len_history
         )
 
     def open_window_history(self):
+        def on_window_close():
+            self.history_window.destroy()
+            self.history_window = None
+
+        if self.history_window is not None:
+            return
         self.history_window = HistoryWindow(
             self.root,
+            on_window_close,
             self.algorithm_stats,
         )
 
+    def open_window_advanced_settings(self):
+        def on_window_close():
+            self.settings_window.destroy()
+            self.settings_window = None
+
+        if self.settings_window is not None:
+            return
+        self.settings_window = SettingsWindow(
+            master=self.root,
+            on_window_close=on_window_close,
+            var_seed=self.var_seed,
+            var_fixed_seed=self.var_fixed_seed,
+            var_show_place_names=self.var_show_place_names,
+            var_show_distances=self.var_show_distances,
+            var_show_pheromone_amount=self.var_show_pheromone_amount,
+            var_continuous_updates=self.var_continuous_updates,
+        )
+
+        if self.on_use_custom_seed is not None:
+            self.settings_window.button_use_seed.configure(command=self.on_use_custom_seed)
+        if self.on_show_distances is not None:
+            self.settings_window.checkbox_show_distances.configure(command=self.on_show_distances)
+        if self.on_show_pheromone_amount is not None:
+            self.settings_window.checkbox_show_pheromone_amount.configure(command=self.on_show_pheromone_amount)
+        if self.on_show_place_names is not None:
+            self.settings_window.checkbox_show_place_names.configure(command=self.on_show_place_names)
+
     def update_history(self):
-        self.history_window.update_tree_view()
+        if self.history_window is not None:
+            self.history_window.update_tree_view()
+
+    def update_convergence(self, best_path_history : list):
+        if self.convergence_window is not None:
+            self.convergence_window.draw(best_path_history)
 
     def open_window_save_log(self):
         timestamp = datetime.now().strftime("%m-%d-%H%M%S")
@@ -879,26 +942,6 @@ class GUI:
         return tkinter.filedialog.asksaveasfilename(
             confirmoverwrite=True, title="Save Params As", initialfile=filename
         )
-
-    def open_window_advanced_settings(self):
-        settings_window = SettingsWindow(
-            master=self.root,
-            var_seed=self.var_seed,
-            var_fixed_seed=self.var_fixed_seed,
-            var_show_place_names=self.var_show_place_names,
-            var_show_distances=self.var_show_distances,
-            var_show_pheromone_amount=self.var_show_pheromone_amount,
-            var_continuous_updates=self.var_continuous_updates,
-        )
-
-        if self.on_use_custom_seed is not None:
-            settings_window.button_use_seed.configure(command=self.on_use_custom_seed)
-        if self.on_show_distances is not None:
-            settings_window.checkbox_show_distances.configure(command=self.on_show_distances)
-        if self.on_show_pheromone_amount is not None:
-            settings_window.checkbox_show_pheromone_amount.configure(command=self.on_show_pheromone_amount)
-        if self.on_show_place_names is not None:
-            settings_window.checkbox_show_place_names.configure(command=self.on_show_place_names)
 
     def draw_path(
         self,
