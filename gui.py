@@ -97,6 +97,8 @@ class HistoryWindow(tkinter.Toplevel):
     ):
         super().__init__(master=master, **kwargs)
 
+        self.displayed_objects = {}
+
         self.title("Ant Algorithms - History Of Runs")
         self.transient(master)
         self.minsize(400, 200)
@@ -111,7 +113,7 @@ class HistoryWindow(tkinter.Toplevel):
 
         self.frame_selection_details = tkinter.Frame(master=self)
         self.frame_selection_details.pack(side=tkinter.TOP, fill=tkinter.X)
-        self.initial_label = tkinter.ttk.Label(master=self.frame_selection_details, text="Nothing selected...")
+        self.initial_label = tkinter.ttk.Label(master=self.frame_selection_details, text="")
         self.initial_label.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 10))
 
         self.group_name_var = tkinter.StringVar(master=self.frame_controls, value="")
@@ -121,10 +123,10 @@ class HistoryWindow(tkinter.Toplevel):
         frame_overview.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
         frame_list = tkinter.Frame(master=frame_overview)
-        frame_list.pack(side=tkinter.LEFT, fill=tkinter.Y, expand=True, anchor="w")
+        frame_list.pack(side=tkinter.LEFT, fill=tkinter.Y, anchor="w")
 
         frame_charts = tkinter.Frame(master=frame_overview)
-        frame_charts.pack(side=tkinter.RIGHT, fill=tkinter.BOTH)
+        frame_charts.pack(side=tkinter.RIGHT, fill=tkinter.BOTH, expand=True)
 
 
         fig = plt.figure(figsize=(5, 4), dpi=100)
@@ -141,7 +143,19 @@ class HistoryWindow(tkinter.Toplevel):
             self.canvas, frame_charts, pack_toolbar=False
         )
         self.canvas_toolbar.update()
-        self.canvas_toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X, padx=(10, 0))
+        self.canvas_toolbar.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 0))
+
+        frame_canvas_options = tkinter.Frame(frame_charts)
+        frame_canvas_options.pack(side=tkinter.TOP, fill=tkinter.X, padx=(10, 0))
+
+        frame_canvas_options.columnconfigure(1, weight=1)
+
+        # combobox = tkinter.ttk.Combobox(master=frame_canvas_options)
+        # combobox.grid(row=0, column=0)
+
+        button_clear = tkinter.ttk.Button(master=frame_canvas_options, text="Clear", command=self.clear_graph)
+        button_clear.grid(row=0, column=2)
+
 
         self.tree_view_runs = tkinter.ttk.Treeview(master=frame_list, columns=["algorithm", "type", "id"], show="tree headings")
         self.tree_view_runs.heading("algorithm", text="Algorithm")
@@ -152,7 +166,7 @@ class HistoryWindow(tkinter.Toplevel):
         self.update_tree_view()
 
     def update_tree_view(self):
-        if self.tree_view_runs.get_children():
+        if len(self.tree_view_runs.get_children()) > 0:
             self.tree_view_runs.delete(*self.tree_view_runs.get_children())
 
         group_id_to_parent_id = {}
@@ -168,6 +182,15 @@ class HistoryWindow(tkinter.Toplevel):
             parent = "" if run.group is None else group_id_to_parent_id[run.group]
             self.tree_view_runs.insert(parent, tkinter.END, text=run.name, values=[run.algorithm, 0, run_id])
 
+    def configure_canvas(self):
+        self.graph_axis.set_xlabel("Iteration")
+        self.graph_axis.set_ylabel("Best path")
+
+    def clear_graph(self):
+        self.displayed_objects.clear()
+        self.graph_axis.cla()
+        self.configure_canvas()
+        self.canvas.draw()
 
     def create_group(self):
         group_name = self.group_name_var.get().strip()
@@ -217,15 +240,33 @@ class HistoryWindow(tkinter.Toplevel):
         item = self.tree_view_runs.item(self.tree_view_runs.selection()[0])
         is_group = bool(item["values"][1])
         if is_group:
-            pass
+            total_history = []
+            group = self.algorithm_stats.run_groups[item["values"][2]]
+            for r in group.runs:
+                total_history.append(self.algorithm_stats.run_history[r].best_len_history)
+
+            shortest_history = min(len(h) for h in total_history)
+            clipped_histories = [h[:shortest_history] for h in total_history]
+
+            histories = numpy.array(clipped_histories)
+
+            median = numpy.median(histories, axis=0)
+            perc25 = numpy.percentile(histories, 25, axis=0)
+            perc75 = numpy.percentile(histories, 75, axis=0)
+
+            lines = self.graph_axis.plot(median, label=group.name)
+            color = lines[0].get_color()
+            self.graph_axis.fill_between(range(histories.shape[1]), perc25, perc75, color=color, alpha=0.3)
         else:
             run = self.algorithm_stats.run_history[item["values"][2]]
             best_path_history = run.best_len_history
             if len(best_path_history) == 1:
-                self.graph_axis.scatter([0], best_path_history[0])
+                self.graph_axis.scatter([0], best_path_history[0], label=run.name)
             elif len(best_path_history) > 0:
-                self.graph_axis.plot(range(len(best_path_history)), best_path_history)
-            self.canvas.draw()
+                self.graph_axis.plot(range(len(best_path_history)), best_path_history, label=run.name)
+
+        self.graph_axis.legend()
+        self.canvas.draw()
 
 
     def delete_objects(self):
@@ -401,9 +442,6 @@ class ConvergenceWindow(tkinter.Toplevel):
         frame_controls = tkinter.Frame(master=self)
         frame_controls.columnconfigure(1, weight=1)
 
-        clear_button = tkinter.ttk.Button(master=frame_controls, text="Clear", command=self.clear)
-        clear_button.grid(row=0, column=0)
-
         frame_controls.pack(side=tkinter.BOTTOM, fill=tkinter.X)
         frame_chart.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
@@ -432,13 +470,6 @@ class ConvergenceWindow(tkinter.Toplevel):
         for artist in all_artists:
             artist.remove()
         self.graph_axis.set_prop_cycle(None)
-
-    def clear(self):
-        self.best_path_history.clear()
-        self.graph_axis.cla()
-        self.configure_canvas()
-        self.canvas.draw()
-
 
 class GUI:
     ANT_ALGORITHM_COMMON_PARAMS = {

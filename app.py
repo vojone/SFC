@@ -269,6 +269,9 @@ class App:
                 self.gui.convergence_window.clear_canvas()
                 self.gui.convergence_window.draw(self.algorithm_stats.run.best_len_history)
 
+            if self.gui.history_window is not None:
+                self.gui.update_history()
+
             if not continues:
                 self.gui.button_step["state"] = "disabled"
                 self.gui.button_run["state"] = "disabled"
