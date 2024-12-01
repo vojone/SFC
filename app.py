@@ -1,3 +1,7 @@
+# app.py
+# Implementation of Ant Algorithms application
+# Author: Vojtěch Dvořák (xdvora3o)
+
 import tkinter
 
 import sys
@@ -17,15 +21,25 @@ from algorithm_stats import AlgorithmStats
 
 
 def get_seed():
+    """Generates random number of reasonable amount of digits which is
+    used as a random seed for the execution. It does not matter that is is not
+    properly random.
+    """
+
     return numpy.random.randint(1, int(1e9))
 
 
 class RunMode(Enum):
-    STEP = 0
-    RUN = 1
+    """Run modes of algorithm runner."""
+
+    STEP = 0 # Make steps
+    RUN = 1 # Run until end (or it is paused interactively)
 
 
 class AlgorithmRunner:
+    """Class that wrapps thread which is responsible for execution of the
+    algorithm."""
+
     def __init__(
         self,
         algorithm: alg.AntAlgorithm,
@@ -34,13 +48,17 @@ class AlgorithmRunner:
         on_algorithm_done,
         iteration_done_update
     ):
+        # Algorithm instance
         self.algorithm = algorithm
         self.gui = gui
+        # Running threads
         self.thread = threading.Thread(target=self.runner)
+        # Sync events
         self.sleep_event = threading.Event()
         self.finish_task_event = threading.Event()
         self.run_event = threading.Event()
         self.terminated_event = threading.Event()
+        # Callbacks
         self.on_algorithm_done = on_algorithm_done
         self.iteration_done_update = iteration_done_update
         self.algorithm_stats = algorithm_stats
@@ -67,6 +85,10 @@ class AlgorithmRunner:
         self.finish_task_event.clear()
 
     def terminate(self):
+        """Gracefully terminates the running thread. Running thread can be
+        terminated only on the end of algorithm iteration.
+        """
+
         self.run_event.clear()
         self.terminated_event.set()
         self.sleep_event.set()
@@ -76,6 +98,8 @@ class AlgorithmRunner:
         self.thread.join()
 
     def runner(self):
+        """Main loop of the running thread."""
+
         while not self.terminated_event.is_set():
             self.sleep_event.wait()
             self.sleep_event.clear()
@@ -99,6 +123,10 @@ class AlgorithmRunner:
 
 
 class App:
+    """Class wrapping the whole Ant Algorithms app. Connects GUI, with
+    implementation of ant algorithms and AlgorithmRunner."""
+
+    # Dictionary mapping algorithm names to corresponding classes
     ALGORITHM_CLASSES = {
         "Ant System": alg.AntSystem,  # Default
         "Ant Density": alg.AntDensity,
@@ -108,8 +136,10 @@ class App:
         "Min-Max Ant System": alg.MinMaxAntSystem,
     }
 
-    TEMRINAL_LOG_FORMAT_STR = "%(levelname)s: %(message)s"
+    # Format of log messages in the terminal
+    TERMINAL_LOG_FORMAT_STR = "%(levelname)s: %(message)s"
 
+    # Are continues updates used by default?
     CONTINUOS_UPDATES_DEFAULT = False
 
     def __init__(
@@ -125,29 +155,31 @@ class App:
         self.data: list | None = None
         self.algorithm: alg.AntAlgorithm | None = None
         self.algorithm_runner: AlgorithmRunner | None = None
-        self.algorithm_class = None
-        self.run_jobid = None
+        self.algorithm_class: alg.AntAlgorithm | None = None
+        self.run_jobid: str | None = None
 
-        self.to_draw = {}
+        self.to_draw: dict = {}
 
         self.algorithm_name = list(self.ALGORITHM_CLASSES.keys())[0]
         self.algorithm_class = self.ALGORITHM_CLASSES[self.algorithm_name]
         self.run_mode: RunMode | None = None
-        self.current_params = {}
+        self.current_params: dict = {}
         self.total_iterations = 0
         self.seed = seed
         self.remaining_runs = 0
 
+        # Configurate GUI if the app has gui
         if has_gui:
             logger = None
             if logging_enabled:
                 logging.basicConfig(
-                    level=logging.INFO, format=self.TEMRINAL_LOG_FORMAT_STR
+                    level=logging.INFO, format=self.TERMINAL_LOG_FORMAT_STR
                 )
                 logger = logging.getLogger()
 
             self.gui = GUI(self.algorithm_stats, logger)
 
+            # Set callback and default values
             self.gui.set_quit_fn(self._quit)
             self.gui.var_opened_file.set(
                 os.path.basename(data_filepath)
@@ -183,14 +215,18 @@ class App:
             self.gui.load_params_cb = self._load_params
 
             self.gui.var_continuous_updates.set(self.CONTINUOS_UPDATES_DEFAULT)
-
+            # Display the best path by default
             self._toggle_best_path()
+
 
     @property
     def has_gui(self):
         return self.gui is not None
 
+
     def _quit(self):
+        """Quits the app gracefully."""
+
         if self.algorithm_runner is not None:
             self.algorithm_runner.terminate()
 
@@ -198,22 +234,34 @@ class App:
             self.gui.root.quit()
             self.gui.root.destroy()
 
+
     def _load_params(self):
+        """Load params callback."""
+
+        # Open dialog
         filename = self.gui.open_window_params_file()
         if not filename:
             return
 
+        # Load params to dicts
         fp = open(filename, mode="r")
         params_dict = json.load(fp)
         self.load_params(params_dict)
         if self.save_params():
             self.reset(reseed=("seed" not in params_dict))
 
+
     def _use_seed(self):
+        """Use custom seed callback."""
+
         self.seed = self.gui.var_seed.get()
         self.reset(reseed=False)
 
+
     def _save(self):
+        """Callback for saving changes of params. It also resets the execution.
+        """
+
         if not self.save_params():
             return
 
@@ -222,21 +270,33 @@ class App:
         self.gui.button_save["state"] = "disabled"
         self.gui.button_restore["state"] = "disabled"
 
+
     def _restore(self):
+        """Callback for restoring the params. It also resets the execution."""
+
         self.restore_params()
         logging.info("Changes of params were restored")
         self.reset()
         self.gui.button_save["state"] = "disabled"
         self.gui.button_restore["state"] = "disabled"
 
+
     def _change_algorithm(self, *args, **kwargs):
+        """Callback for changing the type of algorithm. It also resets the
+        execution and saves the params (which are set to the defalt values).
+        """
+
         algorithm_name = self.gui.var_algorithm.get()
         self.set_algorithm(algorithm_name)
         logging.info(f"Algorithm changed to {self.gui.var_algorithm.get()}")
         self.save_params()
         self.reset()
 
+
     def _on_algorithm_iteration_done(self):
+        """Function that is called when every iteration of algorithm is done.
+        """
+
         solution_update = False
         if (len(self.algorithm_stats.run.best_len_history) == 0 or
             self.algorithm.best_path_len != self.algorithm_stats.run.best_len_history[-1]):
@@ -251,19 +311,27 @@ class App:
             self.gui.update_best_path(self.algorithm.best_path_len)
             self.gui.var_iterations.set(self.algorithm.current_iteration)
 
+        # Redraw canvas if there was any update and continuos updates are activated
         if solution_update:
             self.algorithm_stats.set_best(self.algorithm.best_path, self.algorithm.best_path_len)
             if self.has_gui and self.gui.var_continuous_updates.get():
                 self.gui.redraw_canvas(self.to_draw)
                 self.gui.update_history(self.algorithm_stats.run.best_len_history)
 
+
     def _on_algorithm_done(self, continues: bool):
+        """Called when is portion of iterations executed - depends on which
+        button was used for the execution."""
+
         def auto_rerun():
+            """When there are multiple runs specified the next execution is
+            start automatically.
+            """
             self.reset()
             self._run()
 
+        # Update statistics
         self.algorithm_stats.set_best(self.algorithm.best_path, self.algorithm.best_path_len)
-
         if self.algorithm.is_finished:
             self.algorithm_stats.set_finished()
             self.algorithm_stats.store()
@@ -273,6 +341,7 @@ class App:
                 f"path={self.algorithm_stats.run.best_solution[0]}"
             )
 
+        # Update GUI
         if self.has_gui:
             self.gui.redraw_canvas(self.to_draw)
             self.gui.button_stop["state"] = "disabled"
@@ -291,15 +360,19 @@ class App:
                 if self.run_mode == RunMode.RUN and self.remaining_runs:
                     self.gui.root.after(0, auto_rerun)
 
+
     def _stop(self):
         if self.algorithm_runner is not None:
             self.algorithm_runner.stop()
 
+
     def _reset(self):
         self.reset()
 
+
     def _step_release(self, *args, **kwargs):
         if self.run_jobid is not None:
+            # Button was released before run job was executed, so cancel it
             self.gui.root.after_cancel(self.run_jobid)
         self.run_jobid = None
         if self.algorithm_runner is None:
@@ -307,7 +380,13 @@ class App:
 
         self.algorithm_runner.stop()
 
+
     def _step_press(self, *args, **kwargs):
+        """Callback for step button. Step button can be used in two modes. If
+        there is just single click only one iteration of lagoirthm is made. If
+        If button is pressed for a whil
+        """
+
         STEP_BUTTON_RUN_MS = 600
 
         if self.algorithm_runner is None:
@@ -318,7 +397,9 @@ class App:
         self.run_mode = RunMode.STEP
         self.gui.set_running_status()
         self.algorithm_runner.make_step()
+        # Schedule run event if step button is not released for a while
         self.run_jobid = self.gui.root.after(STEP_BUTTON_RUN_MS, self._run)
+
 
     def _user_run(self):
         if self.algorithm_runner is None:
@@ -328,13 +409,17 @@ class App:
         self.remaining_runs = self.gui.var_number_of_runs.get()
         self._run()
 
+
     def _run(self):
         self.gui.set_running_status()
         self.algorithm_runner.run()
         self.gui.button_stop["state"] = "enabled"
         self.gui.button_run["state"] = "disabled"
 
+
     def _open_file(self):
+        """Callback to open the file with the data (places)."""
+
         self.data_filepath = self.gui.open_window_data_file()
         if self.data_filepath is None or self.data_filepath == "":
             return
@@ -343,11 +428,13 @@ class App:
         self.gui.var_opened_file.set(data_filename)
         self.load_data()
 
+
     def _toggle_pheromone(self):
         if self.gui.var_pheronomone.get() == 1:
             self.add_to_draw("pheromone", self.draw_pheromone)
         else:
             self.remove_to_draw("pheromone")
+
 
     def _toggle_best_path(self):
         if self.gui.var_best_path.get() == 1:
@@ -355,13 +442,17 @@ class App:
         else:
             self.remove_to_draw("best_path")
 
+
     def _toggle_place_names(self):
         if self.gui.var_show_place_names.get() == 1:
             self.add_to_draw("place_names", self.draw_data_names)
         else:
             self.remove_to_draw("place_names")
 
+
     def _save_params_to_file(self):
+        """Callback for saving parameters (without seed)."""
+
         filename = self.gui.open_window_save_params()
         if not filename:
             return
@@ -371,7 +462,10 @@ class App:
         fp.write(json.dumps(params, indent=4))
         fp.close()
 
+
     def _save_params_with_seed_to_file(self):
+        """Callback for saving parameters with seed."""
+
         filename = self.gui.open_window_save_params(custom_str="-seed")
         if not filename:
             return
@@ -382,7 +476,11 @@ class App:
         fp.write(json.dumps(params, indent=4))
         fp.close()
 
+
     def load_params(self, params_dict: dict):
+        """Loads parameters from dict to the app."""
+
+        # Algorithm and seed are handled separately
         if "algorithm" not in params_dict:
             raise Exception("missing parameter 'algorithm'")
         self.set_algorithm(params_dict["algorithm"])
@@ -392,6 +490,7 @@ class App:
             if self.has_gui:
                 self.gui.var_seed.set(params_dict["seed"])
 
+        # Load the rest of parameters
         for param_name in params_dict:
             if param_name in ["seed", "algorithm"]:
                 continue
@@ -405,18 +504,31 @@ class App:
                 if param_name not in self.current_params:
                     raise Exception(f"unrecognized param '{param_name}'")
 
+
     def add_to_draw(self, name: str, draw_fn):
+        """Adds draw function to the draw dictionary. This function will be
+        called everytime the canvas is redrawn."""
+
         self.to_draw[name] = draw_fn
         self.gui.redraw_canvas(self.to_draw)
 
+
     def remove_to_draw(self, name: str):
+        """Removes draw function from the to_draw dictionary."""
+
         if name not in self.to_draw:
             return
 
         del self.to_draw[name]
         self.gui.redraw_canvas(self.to_draw)
 
+
     def load_data(self):
+        """Opens file with filepath stored in self.data_filepath property,
+        tries to parse it and load to the app. Currently it support CSV format
+        and JSON format.
+        """
+
         def get_data(data_tuple : tuple):
             if len(data_tuple) == 2:
                 return (float(data_tuple[0]), float(data_tuple[1]))
@@ -437,6 +549,7 @@ class App:
             logging.error(f"Error while opening data file: {e}")
             return
 
+        # Try to parse the data
         try:
             raw_data = json.load(fp)["data"]
         except (json.decoder.JSONDecodeError, TypeError, KeyError) as _:
@@ -459,18 +572,27 @@ class App:
         self.to_draw["data"] = self.draw_data
         self.reset()
 
+
     def set_algorithm(self, algorithm_name: str):
+        """Sets used algorithm for the solution."""
+
         self.algorithm_name = algorithm_name
         self.algorithm_class = self.ALGORITHM_CLASSES[algorithm_name]
         if self.has_gui:
             self.gui.update_params(self.gui.ALGORIHTM_PARAMS[algorithm_name])
 
+
     def start(self):
+        """Starts the app."""
+
         self.save_params()
         if self.data_filepath is not None:
             self.load_data()
 
+
     def reset(self, reseed: bool = True):
+        """Restarts executions inside the app."""
+
         if not self.data:
             return
 
@@ -503,6 +625,7 @@ class App:
             self.gui.button_run["state"] = "normal"
             self.gui.redraw_canvas(self.to_draw)
 
+
     def save_params(self) -> bool:
         if not self.has_gui:
             return True
@@ -520,6 +643,7 @@ class App:
 
         return True
 
+
     def restore_params(self):
         if not self.has_gui:
             return
@@ -528,7 +652,9 @@ class App:
             self.gui.param_dict[p][0].set(self.current_params[p])
         self.gui.param_stored()
 
+
     def make_params_dict(self) -> dict:
+        """Creates dictionary from the current parameters of algorithm."""
         result = {}
         result["algorithm"] = self.gui.var_algorithm.get()
         for p in self.current_params:
@@ -536,7 +662,11 @@ class App:
 
         return result
 
+
     def algorithm_init(self):
+        """Instantiates the algorithm give it to the new runner and starts it.
+        """
+
         if self.has_gui:
             stored_params_str = f"initializing with seed={self.seed}"
             for p in self.current_params:
@@ -553,6 +683,7 @@ class App:
         if self.has_gui:
             logging.info(f"'{self.gui.var_algorithm.get()}' initialized")
 
+        # Prepare AlgorithmRunner with the algorithm
         self.algorithm_runner = AlgorithmRunner(
             self.algorithm,
             self.gui,
@@ -561,6 +692,7 @@ class App:
             self._on_algorithm_iteration_done,
         )
         self.algorithm_runner.start()
+
 
     def draw_best_path(self):
         if (not self.has_gui or
@@ -576,6 +708,7 @@ class App:
             self.algorithm.map.distance_m,
         )
 
+
     def draw_pheromone(self):
         if not self.has_gui:
             return
@@ -586,9 +719,11 @@ class App:
             bool(self.gui.var_show_pheromone_amount.get()),
         )
 
+
     def draw_data(self):
         if self.data is not None:
             self.gui.draw_data(self.data)
+
 
     def draw_data_names(self):
         if self.data is not None:
