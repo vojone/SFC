@@ -489,6 +489,7 @@ class App:
         if "algorithm" not in params_dict:
             raise Exception("missing parameter 'algorithm'")
         self.set_algorithm(params_dict["algorithm"])
+        self.save_params()
 
         if "seed" in params_dict:
             self.seed = params_dict["seed"]
