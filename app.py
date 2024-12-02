@@ -214,6 +214,11 @@ class App:
             self.gui.on_save_params_with_seed = self._save_params_with_seed_to_file
             self.gui.load_params_cb = self._load_params
 
+            # Disable all buttons by default until application is started
+            self.gui.button_stop["state"] = "disabled"
+            self.gui.button_step["state"] = "disabled"
+            self.gui.button_run["state"] = "disabled"
+
             self.gui.var_continuous_updates.set(self.CONTINUOS_UPDATES_DEFAULT)
             # Display the best path by default
             self._toggle_best_path()
