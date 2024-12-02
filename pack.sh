@@ -1,3 +1,3 @@
 #!/bin/bash
 
-zip  14-xdvora3o.zip *.py README.md install.sh run.sh dokumentace.pdf datasets experiments
+zip 14-xdvora3o.zip *.py README.md install.sh run.sh dokumentace.pdf datasets/* experiments/* screenshots/*
