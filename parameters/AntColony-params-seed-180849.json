@@ -1,0 +1,10 @@
+{
+    "algorithm": "Ant Colony",
+    "iterations": 100,
+    "ant_amount": 20,
+    "pheronome_w": 2.0,
+    "visibility_w": 1.0,
+    "vaporization": 0.4,
+    "exploitation_coef": 0.2,
+    "seed": 297696975
+}
